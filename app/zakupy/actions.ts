@@ -1,7 +1,7 @@
 'use server';
 
 import { supabase } from '@/lib/db';
-import { revalidatePath } from 'next/cache';
+// revalidatePath removed — strona ma force-dynamic, niepotrzebne i crashuje w Next.js 15
 
 const DEFAULT_SHOPPING = [
   { name: 'Kurczak filet', quantity: '1 kg', unit: 'kg', category: 'mięso' },
@@ -124,7 +124,6 @@ export async function generateShoppingList(weekNumber: number) {
     .eq('list_id', listId)
     .order('category');
 
-  revalidatePath('/zakupy');
   return { listId, items: items || [], error: null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -135,7 +134,7 @@ export async function generateShoppingList(weekNumber: number) {
 export async function toggleItem(itemId: number) {
   const { data: item } = await supabase.from('shopping_items').select('checked').eq('id', itemId).single();
   await supabase.from('shopping_items').update({ checked: !item?.checked }).eq('id', itemId);
-  revalidatePath('/zakupy');
+
 }
 
 export async function addItem(listId: number, name: string, quantity: string) {
@@ -144,7 +143,7 @@ export async function addItem(listId: number, name: string, quantity: string) {
     .insert({ list_id: listId, name, quantity, unit: '', checked: false, category: 'inne' })
     .select()
     .single();
-  revalidatePath('/zakupy');
+
   return { item: data };
 }
 
@@ -157,12 +156,12 @@ export async function addSweetsToList(listId: number) {
 
   await supabase.from('shopping_items').insert(toAdd);
   const { data: items } = await supabase.from('shopping_items').select('*').eq('list_id', listId).order('category');
-  revalidatePath('/zakupy');
+
   return { items: items || [] };
 }
 
 export async function deleteList(listId: number) {
   await supabase.from('shopping_items').delete().eq('list_id', listId);
   await supabase.from('shopping_lists').delete().eq('id', listId);
-  revalidatePath('/zakupy');
+
 }
