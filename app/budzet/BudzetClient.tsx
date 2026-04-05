@@ -68,7 +68,7 @@ export default function BudzetClient({
   bills: initialBills,
   expenses: initialExpenses,
   totalBills,
-  totalExpenses: initialTotalExpenses,
+  totalExpenses: _totalExpenses,
   currentMonth,
 }: {
   bills: Bill[];
@@ -79,7 +79,6 @@ export default function BudzetClient({
 }) {
   const [bills, setBills] = useState(initialBills);
   const [expenses, setExpenses] = useState(initialExpenses);
-  const [totalExpenses, setTotalExpenses] = useState(initialTotalExpenses);
 
   // Expense form
   const [showExpForm, setShowExpForm] = useState(false);
@@ -139,15 +138,11 @@ export default function BudzetClient({
         const result = await updateExpense(editExp.id, expForm);
         if (result.expense) {
           setExpenses(prev => prev.map(e => e.id === editExp.id ? result.expense as Expense : e));
-          recalcTotal();
         }
       } else {
         const result = await addExpense(expForm);
         if (result.expense) {
           setExpenses(prev => [result.expense as Expense, ...prev]);
-          if (result.expense.type === 'wydatek' || !result.expense.type) {
-            setTotalExpenses(prev => prev + (result.expense as Expense).amount);
-          }
         }
       }
       setShowExpForm(false);
@@ -155,17 +150,10 @@ export default function BudzetClient({
     });
   }
 
-  function recalcTotal() {
-    setTotalExpenses(
-      expenses.filter(e => e.type === 'wydatek' || !e.type).reduce((sum, e) => sum + e.amount, 0)
-    );
-  }
-
-  function handleDeleteExp(id: number, amount: number, type: string) {
+  function handleDeleteExp(id: number) {
     startTransition(async () => {
       await deleteExpense(id);
       setExpenses(prev => prev.filter(e => e.id !== id));
-      if (type === 'wydatek' || !type) setTotalExpenses(prev => prev - amount);
     });
   }
 
@@ -531,7 +519,7 @@ export default function BudzetClient({
                       ✏️
                     </button>
                     <button
-                      onClick={() => handleDeleteExp(e.id, e.amount, e.type)}
+                      onClick={() => handleDeleteExp(e.id)}
                       className="text-zinc-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                     >
                       ✕
