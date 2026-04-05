@@ -18,10 +18,15 @@ jobs:
       - name: Run migrations
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGSSLMODE: require
         run: |
-          DB_URL="postgresql://postgres.qlqnrsxpmoeoukfgovmy:${{ secrets.SUPABASE_DB_PASSWORD }}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres"
           for f in $(ls supabase/migrations/*.sql | sort); do
             echo "→ $f"
-            psql "$DB_URL" -f "$f"
+            psql \
+              -h aws-0-eu-north-1.pooler.supabase.com \
+              -p 6543 \
+              -U "postgres.qlqnrsxpmoeoukfgovmy" \
+              -d postgres \
+              -f "$f"
           done
           echo "✅ Migracje wykonane"
