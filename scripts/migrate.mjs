@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // scripts/migrate.mjs
 // Uruchom: node scripts/migrate.mjs
-// Wymaga SUPABASE_ACCESS_TOKEN w .env.local lub w środowisku
+// Wymaga SUPABASE_DB_PASSWORD w .env.local lub środowisku
 
-import { readFileSync, readdirSync } from 'fs'
+import { readFileSync, readdirSync, existsSync } from 'fs'
 import { join } from 'path'
+import { execSync } from 'child_process'
 
 // Wczytaj .env.local
 try {
@@ -20,24 +21,20 @@ try {
   }
 } catch {}
 
-const PROJECT_REF = 'qlqnrshpmoeoukfgovmy'
-const TOKEN = process.env.SUPABASE_ACCESS_TOKEN
+const PROJECT_REF = 'qlqnrsxpmoeoukfgovmy'
+const DB_PASS = process.env.SUPABASE_DB_PASSWORD
+const DB_URL = `postgresql://postgres.${PROJECT_REF}:${DB_PASS}@aws-0-eu-north-1.pooler.supabase.com:6543/postgres`
 
-if (!TOKEN) {
-  console.error('❌ Brak SUPABASE_ACCESS_TOKEN — dodaj do .env.local lub GitHub Secrets')
+if (!DB_PASS) {
+  console.error('❌ Brak SUPABASE_DB_PASSWORD w .env.local')
+  console.error('   Dodaj hasło do bazy (to samo co w GitHub Secrets SUPABASE_DB_PASSWORD)')
   process.exit(1)
 }
 
 const migrationsDir = 'supabase/migrations'
-let files
-try {
-  files = readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort()
-} catch {
-  console.error('❌ Brak folderu', migrationsDir)
-  process.exit(1)
-}
+const files = readdirSync(migrationsDir)
+  .filter(f => f.endsWith('.sql'))
+  .sort()
 
 if (!files.length) {
   console.log('Brak plików .sql w', migrationsDir)
@@ -47,30 +44,20 @@ if (!files.length) {
 console.log(`Znaleziono ${files.length} plików migracji\n`)
 
 for (const file of files) {
-  const sql = readFileSync(join(migrationsDir, file), 'utf-8')
+  const sqlPath = join(migrationsDir, file).replace(/\\/g, '/')
   process.stdout.write(`→ ${file} ... `)
 
-  const res = await fetch(
-    `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: sql }),
-    }
-  )
-
-  const data = await res.json()
-
-  if (!res.ok) {
+  try {
+    execSync(`psql "${DB_URL}" -f "${sqlPath}"`, {
+      env: { ...process.env, PGPASSWORD: DB_PASS },
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    console.log('✓')
+  } catch (err) {
     console.log('❌')
-    console.error('Błąd:', JSON.stringify(data, null, 2))
+    console.error(err.stderr?.toString() || err.message)
     process.exit(1)
   }
-
-  console.log('✓')
 }
 
 console.log('\n✅ Wszystkie migracje wykonane.')
