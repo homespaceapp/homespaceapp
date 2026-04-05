@@ -28,6 +28,35 @@ if (!TOKEN) {
   process.exit(1)
 }
 
+async function query(sql) {
+  const res = await fetch(
+    `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: sql }),
+    }
+  )
+  const data = await res.json()
+  if (!res.ok) throw new Error(JSON.stringify(data))
+  return data
+}
+
+// Utwórz tabelę śledzącą migracje (idempotentne)
+await query(`
+  CREATE TABLE IF NOT EXISTS _migrations (
+    filename TEXT PRIMARY KEY,
+    applied_at TIMESTAMPTZ DEFAULT now()
+  )
+`)
+
+// Pobierz już zastosowane migracje
+const applied = await query('SELECT filename FROM _migrations')
+const appliedSet = new Set((applied || []).map(r => r.filename))
+
 const files = readdirSync('supabase/migrations')
   .filter(f => f.endsWith('.sql'))
   .sort()
@@ -40,30 +69,23 @@ if (!files.length) {
 console.log(`Znaleziono ${files.length} plików migracji\n`)
 
 for (const file of files) {
+  if (appliedSet.has(file)) {
+    console.log(`→ ${file} ... ✓ (już zastosowana)`)
+    continue
+  }
+
   const sql = readFileSync(join('supabase/migrations', file), 'utf-8')
   process.stdout.write(`→ ${file} ... `)
 
-  const res = await fetch(
-    `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: sql }),
-    }
-  )
-
-  const data = await res.json()
-
-  if (!res.ok) {
+  try {
+    await query(sql)
+    await query(`INSERT INTO _migrations (filename) VALUES ('${file}')`)
+    console.log('✓ (nowa)')
+  } catch (e) {
     console.log('❌')
-    console.error('Błąd:', JSON.stringify(data, null, 2))
+    console.error('Błąd:', e.message)
     process.exit(1)
   }
-
-  console.log('✓')
 }
 
 console.log('\n✅ Migracje wykonane.')
