@@ -29,9 +29,6 @@ export default async function BudzetPage() {
   }>;
 
   const totalBills = billsData.reduce((sum, b) => sum + b.amount, 0);
-  const totalExpenses = expensesData
-    .filter(e => e.type === 'wydatek' || !e.type)
-    .reduce((sum, e) => sum + e.amount, 0);
 
   const billsWithDaysLeft = billsData.map(b => ({
     ...b,
@@ -43,7 +40,6 @@ export default async function BudzetPage() {
       bills={billsWithDaysLeft}
       expenses={expensesData}
       totalBills={totalBills}
-      totalExpenses={totalExpenses}
       currentMonth={currentMonth}
     />
   );
