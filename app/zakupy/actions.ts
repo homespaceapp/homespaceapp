@@ -79,6 +79,60 @@ export async function generateShoppingList(weekNumber: number) {
     .select('name, quantity');
   const pantryItems = pantry || [];
 
+  // Pobierz plan tygodnia → meal_ids → składniki z meals
+  const { data: weekPlan } = await supabase
+    .from('weekly_plan')
+    .select('meal_id')
+    .eq('week_number', weekNumber);
+
+  const mealIds = (weekPlan || []).map((wp: { meal_id: number }) => wp.meal_id).filter(Boolean);
+
+  // Zbierz składniki ze wszystkich dań tygodnia
+  const ingredientItems: { name: string; quantity: string; unit: string; category: string }[] = [];
+
+  if (mealIds.length > 0) {
+    const { data: meals } = await supabase
+      .from('meals')
+      .select('ingredients, category')
+      .in('id', mealIds);
+
+    const seen = new Set<string>();
+    for (const meal of (meals || [])) {
+      if (!meal.ingredients) continue;
+      const parts = meal.ingredients.split(',');
+      for (const raw of parts) {
+        const ing = raw.trim();
+        if (!ing) continue;
+        // Klucz deduplicacji — pierwsze słowo nazwy
+        const key = ing.toLowerCase().split(/[\s(]/)[0];
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // Sprawdź spiżarnię
+        const inPantry = pantryItems.find(p => nameMatch(p.name, ing));
+        if (inPantry && inPantry.quantity > 0) continue;
+        ingredientItems.push({ name: ing, quantity: '', unit: '', category: meal.category || 'inne' });
+      }
+    }
+  }
+
+  // Fallback na DEFAULT_SHOPPING jeśli brak planu/składników
+  const baseItems = ingredientItems.length > 0
+    ? ingredientItems
+    : DEFAULT_SHOPPING
+        .filter(item => {
+          const inPantry = pantryItems.find(p => nameMatch(p.name, item.name));
+          return !inPantry || inPantry.quantity <= 0;
+        })
+        .map(item => ({ name: item.name, quantity: item.quantity, unit: item.unit, category: item.category }));
+
+  // Dodaj STAPLES których brakuje lub mają qty <= 0
+  const staplesNeeded = STAPLES
+    .filter(s => {
+      const inPantry = pantryItems.find(p => nameMatch(p.name, s.name));
+      return !inPantry || inPantry.quantity <= 0;
+    })
+    .map(s => ({ name: s.name, quantity: '-', unit: s.unit, category: s.category }));
+
   // Utwórz nową listę
   const { data: list, error: listError } = await supabase
     .from('shopping_lists')
@@ -92,23 +146,11 @@ export async function generateShoppingList(weekNumber: number) {
 
   const listId = list.id;
 
-  // Filtruj DEFAULT_SHOPPING — pomijaj co jest w spiżarni z ilością > 0
-  const mainItems = DEFAULT_SHOPPING
-    .filter(item => {
-      const inPantry = pantryItems.find(p => nameMatch(p.name, item.name));
-      return !inPantry || inPantry.quantity <= 0;
-    })
-    .map(item => ({ name: item.name, quantity: item.quantity, unit: item.unit, category: item.category, list_id: listId, checked: false }));
-
-  // Dodaj STAPLES których brakuje lub mają qty <= 0
-  const staplesNeeded = STAPLES
-    .filter(s => {
-      const inPantry = pantryItems.find(p => nameMatch(p.name, s.name));
-      return !inPantry || inPantry.quantity <= 0;
-    })
-    .map(s => ({ name: s.name, quantity: '-', unit: s.unit, category: s.category, list_id: listId, checked: false }));
-
-  const toInsert = [...mainItems, ...staplesNeeded];
+  const toInsert = [...baseItems, ...staplesNeeded].map(item => ({
+    ...item,
+    list_id: listId,
+    checked: false,
+  }));
 
   if (toInsert.length > 0) {
     const { error: insertError } = await supabase.from('shopping_items').insert(toInsert);

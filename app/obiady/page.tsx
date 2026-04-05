@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/db';
 import Link from 'next/link';
+import { MealCard } from './MealCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,14 +10,18 @@ function getWeekNumber(date: Date) {
   return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
 }
 
-const proteinColors: Record<string, string> = {
-  hi: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  md: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  ok: 'bg-blue-100 text-blue-800 border-blue-200',
-  lo: 'bg-red-50 text-red-700 border-red-200',
+const categoryLabels: Record<string, string> = {
+  drób: '🍗 Drób',
+  kurczak: '🍗 Kurczak',
+  wieprzowina: '🥩 Wieprzowina',
+  makaron: '🍝 Makarony',
+  jajka: '🥚 Jajka',
+  kasza: '🌾 Kasza',
+  ziemniaki: '🥔 Ziemniaki',
+  słodkie: '🍬 Słodkie',
+  slodkie: '🍬 Słodkie (niedziela)',
+  szybkie: '⚡ Szybkie',
 };
-const proteinLabels: Record<string, string> = { hi: '💪💪💪 >90g', md: '💪💪 60–90g', ok: '💪 30–60g', lo: '⚠️ <30g' };
-const dayLabels = ['', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'];
 
 export default async function ObiadyPage({
   searchParams,
@@ -41,17 +46,19 @@ export default async function ObiadyPage({
     .order('category')
     .order('name');
 
-  const mealsData = (allMeals || []) as Array<{
+  type MealRow = {
     id: number;
     name: string;
     category: string;
     prep_time: number;
-    protein_per_serving: number;
     protein_rating: string;
     notes: string;
-  }>;
+    recipe: string;
+    ingredients: string;
+  };
 
-  const mealsMap = mealsData.reduce((acc, m) => { acc[m.id] = m; return acc; }, {} as Record<number, typeof mealsData[0]>);
+  const mealsData = (allMeals || []) as MealRow[];
+  const mealsMap = mealsData.reduce((acc, m) => { acc[m.id] = m; return acc; }, {} as Record<number, MealRow>);
 
   const weekMeals = (weekPlan || []).map(wp => ({
     day_of_week: wp.day_of_week as number,
@@ -59,27 +66,15 @@ export default async function ObiadyPage({
     protein_rating: mealsMap[wp.meal_id]?.protein_rating || '',
     prep_time: mealsMap[wp.meal_id]?.prep_time || null,
     notes: mealsMap[wp.meal_id]?.notes || '',
-    category: mealsMap[wp.meal_id]?.category || '',
-    ingredient_chain: wp.ingredient_chain as string || '',
-    cost_estimate: wp.cost_estimate as number || 0,
+    recipe: mealsMap[wp.meal_id]?.recipe || '',
+    ingredients: mealsMap[wp.meal_id]?.ingredients || '',
   }));
 
   const categoryGroups = mealsData.reduce((acc, m) => {
     if (!acc[m.category]) acc[m.category] = [];
     acc[m.category].push(m);
     return acc;
-  }, {} as Record<string, typeof mealsData>);
-
-  const categoryLabels: Record<string, string> = {
-    kurczak: '🍗 Kurczak',
-    wieprzowina: '🥩 Wieprzowina',
-    makaron: '🍝 Makarony',
-    jajka: '🥚 Jajka',
-    kasza: '🌾 Kasza',
-    ziemniaki: '🥔 Ziemniaki',
-    slodkie: '🍬 Słodkie (niedziela)',
-    szybkie: '⚡ Szybkie',
-  };
+  }, {} as Record<string, MealRow[]>);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -138,35 +133,7 @@ export default async function ObiadyPage({
             </div>
           ) : (
             weekMeals.map(meal => (
-              <div
-                key={meal.day_of_week}
-                className={`bg-white rounded-xl p-4 border ${proteinColors[meal.protein_rating] || 'border-zinc-200'} shadow-sm`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-zinc-400 w-12 shrink-0">
-                      {dayLabels[meal.day_of_week]}
-                    </span>
-                    <div>
-                      <p className="font-semibold text-zinc-800">{meal.meal_name}</p>
-                      {meal.notes && (
-                        <p className="text-xs text-zinc-500 mt-0.5">{meal.notes}</p>
-                      )}
-                      {meal.ingredient_chain && (
-                        <p className="text-xs text-blue-600 mt-0.5">← {meal.ingredient_chain}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {meal.prep_time && (
-                      <span className="text-xs text-zinc-400">⏱️ {meal.prep_time} min</span>
-                    )}
-                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${proteinColors[meal.protein_rating] || ''}`}>
-                      {proteinLabels[meal.protein_rating]}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <MealCard key={meal.day_of_week} meal={meal} />
             ))
           )}
           {weekMeals.length > 0 && (
@@ -191,25 +158,7 @@ export default async function ObiadyPage({
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {meals.map(meal => (
-                  <div
-                    key={meal.id}
-                    className={`bg-white rounded-lg p-3 border ${proteinColors[meal.protein_rating] || 'border-zinc-200'}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium text-zinc-800 text-sm">{meal.name}</p>
-                        {meal.notes && (
-                          <p className="text-xs text-zinc-500 mt-0.5 leading-snug">{meal.notes}</p>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span className="text-xs">{proteinLabels[meal.protein_rating]}</span>
-                        {meal.prep_time && (
-                          <span className="text-xs text-zinc-400">⏱️ {meal.prep_time} min</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <MealCard key={meal.id} meal={{ meal_name: meal.name, protein_rating: meal.protein_rating, prep_time: meal.prep_time, notes: meal.notes, recipe: meal.recipe, ingredients: meal.ingredients }} />
                 ))}
               </div>
             </div>
