@@ -9,15 +9,17 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run migrations
-        env:
-          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          for file in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
-            echo "Running: $file"
-            psql "$DB_URL" -f "$file"
-          done
-          echo "All migrations done."
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref qlqnrshpmoeoukfgovmy
+
+      - name: Push migrations
+        run: supabase db push --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
