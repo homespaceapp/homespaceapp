@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import dynamic from 'next/dynamic';
 import { addPantryItem, deletePantryItem } from './actions';
+
+const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), { ssr: false });
 
 type Item = { id: number; name: string; quantity: number; unit: string; category: string; purchase_date: string; expiry_days: number; notes: string };
 
@@ -42,6 +45,7 @@ function ExpiryBadge({ item }: { item: Item }) {
 export default function PantryClient({ initialItems }: { initialItems: Item[] }) {
   const [items, setItems] = useState(initialItems);
   const [showForm, setShowForm] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [form, setForm] = useState({ name: '', quantity: '', unit: 'szt', category: 'inne', purchase_date: '', expiry_days: '' });
   const [isPending, startTransition] = useTransition();
 
@@ -87,19 +91,47 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
     }));
   }
 
+  function handleScanned({ name, category }: { name: string; category: string }) {
+    setShowScanner(false);
+    setForm(prev => ({
+      ...prev,
+      name,
+      category,
+      purchase_date: new Date().toISOString().split('T')[0],
+      expiry_days: (() => {
+        const lower = name.toLowerCase();
+        const match = Object.entries(EXPIRY_DEFAULTS).find(([k]) => lower.includes(k));
+        return match ? String(match[1]) : prev.expiry_days;
+      })(),
+    }));
+    setShowForm(true);
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {showScanner && (
+        <BarcodeScanner onScan={handleScanned} onClose={() => setShowScanner(false)} />
+      )}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-zinc-800">Spiżarnia</h1>
           <p className="text-zinc-500 text-sm mt-0.5">{items.length} produktów w domu</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
-        >
-          + Dodaj produkt
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowScanner(true)}
+            className="px-3 py-2 bg-zinc-800 text-white rounded-lg text-sm font-medium hover:bg-zinc-700"
+            title="Skanuj kod kreskowy"
+          >
+            📷 Skanuj
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+          >
+            + Dodaj
+          </button>
+        </div>
       </div>
 
       {/* Alerty */}
