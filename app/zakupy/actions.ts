@@ -82,7 +82,7 @@ export async function generateShoppingList(weekNumber: number) {
   // Utwórz nową listę
   const { data: list, error: listError } = await supabase
     .from('shopping_lists')
-    .insert({ week_number: weekNumber, status: 'active' })
+    .insert({ week_number: weekNumber, created_at: new Date().toISOString(), status: 'active' })
     .select('id')
     .maybeSingle();
 
