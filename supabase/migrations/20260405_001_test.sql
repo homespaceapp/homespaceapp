@@ -1,4 +1,4 @@
--- Test migracji: dodanie kolumny version do tabeli meals (jeśli nie istnieje)
+-- Test migracji v2: dodanie kolumny version do tabeli meals (jeśli nie istnieje)
 -- Ten plik weryfikuje czy pipeline GitHub Actions → Supabase działa
 DO $$
 BEGIN
