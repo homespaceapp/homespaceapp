@@ -6,11 +6,31 @@ import { revalidatePath } from 'next/cache';
 type PantryForm = { name: string; quantity: string; unit: string; category: string; purchase_date: string; expiry_days: string };
 
 export async function addPantryItem(form: PantryForm) {
+  const newQty = parseFloat(form.quantity) || 1;
+
+  // Deduplikacja — jeśli produkt o tej samej nazwie już istnieje, sumuj ilość
+  const { data: existing } = await supabase
+    .from('pantry')
+    .select('id, quantity')
+    .ilike('name', form.name.trim())
+    .maybeSingle();
+
+  if (existing) {
+    const { data } = await supabase
+      .from('pantry')
+      .update({ quantity: existing.quantity + newQty })
+      .eq('id', existing.id)
+      .select()
+      .single();
+    revalidatePath('/spizarnia');
+    return { item: data };
+  }
+
   const { data } = await supabase
     .from('pantry')
     .insert({
       name: form.name,
-      quantity: parseFloat(form.quantity) || 1,
+      quantity: newQty,
       unit: form.unit,
       category: form.category,
       purchase_date: form.purchase_date || null,

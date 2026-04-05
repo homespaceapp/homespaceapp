@@ -44,7 +44,7 @@ export async function generateShoppingList(weekNumber: number) {
     .select('id')
     .eq('week_number', weekNumber)
     .eq('status', 'active')
-    .single();
+    .maybeSingle();
 
   if (existing) {
     const { data: items } = await supabase
@@ -58,13 +58,17 @@ export async function generateShoppingList(weekNumber: number) {
   const { data: pantry } = await supabase.from('pantry').select('name');
   const pantryNames = (pantry || []).map((p: { name: string }) => p.name.toLowerCase());
 
-  const { data: list } = await supabase
+  const { data: list, error: listError } = await supabase
     .from('shopping_lists')
     .insert({ week_number: weekNumber, created_at: new Date().toISOString(), status: 'active' })
     .select()
-    .single();
+    .maybeSingle();
 
-  const listId = list!.id;
+  if (listError || !list) {
+    return { listId: null, items: [], error: listError?.message || 'Błąd tworzenia listy' };
+  }
+
+  const listId = list.id;
   const filtered = DEFAULT_SHOPPING.filter(item =>
     !pantryNames.some(p => p.includes(item.name.toLowerCase().split(' ')[0]) || item.name.toLowerCase().includes(p))
   ).map(item => ({ ...item, list_id: listId, checked: false }));

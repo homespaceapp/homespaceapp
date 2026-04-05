@@ -20,6 +20,7 @@ const categoryLabels: Record<string, string> = {
   nabiał: '🥛 Nabiał',
   warzywa: '🥦 Warzywa',
   suche: '🌾 Suche / Zapas',
+  napoje: '🥤 Napoje / Woda',
   słodycze: '🍬 Słodycze',
   inne: '📦 Inne',
 };

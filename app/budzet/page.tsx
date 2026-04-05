@@ -20,11 +20,18 @@ export default async function BudzetPage() {
     .like('date', `${currentMonth}%`)
     .order('date', { ascending: false });
 
-  const billsData = (bills || []) as Array<{ id: number; name: string; amount: number; due_day: number; category: string }>;
-  const expensesData = (expenses || []) as Array<{ id: number; date: string; category: string; amount: number; description: string }>;
+  const billsData = (bills || []) as Array<{
+    id: number; name: string; amount: number; due_day: number; category: string;
+  }>;
+  const expensesData = (expenses || []) as Array<{
+    id: number; date: string; category: string; amount: number; description: string;
+    type: string; notes: string | null;
+  }>;
 
   const totalBills = billsData.reduce((sum, b) => sum + b.amount, 0);
-  const totalExpenses = expensesData.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = expensesData
+    .filter(e => e.type === 'wydatek' || !e.type)
+    .reduce((sum, e) => sum + e.amount, 0);
 
   const billsWithDaysLeft = billsData.map(b => ({
     ...b,

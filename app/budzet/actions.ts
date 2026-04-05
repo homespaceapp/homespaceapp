@@ -3,12 +3,44 @@
 import { supabase } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
-type ExpenseForm = { date: string; category: string; amount: string; description: string };
+type ExpenseForm = {
+  date: string;
+  category: string;
+  amount: string;
+  description: string;
+  type: string;
+  notes?: string;
+};
 
 export async function addExpense(form: ExpenseForm) {
   const { data } = await supabase
     .from('expenses')
-    .insert({ date: form.date, category: form.category, amount: parseFloat(form.amount), description: form.description })
+    .insert({
+      date: form.date,
+      category: form.category,
+      amount: parseFloat(form.amount),
+      description: form.description,
+      type: form.type || 'wydatek',
+      notes: form.notes || null,
+    })
+    .select()
+    .single();
+  revalidatePath('/budzet');
+  return { expense: data };
+}
+
+export async function updateExpense(id: number, form: ExpenseForm) {
+  const { data } = await supabase
+    .from('expenses')
+    .update({
+      date: form.date,
+      category: form.category,
+      amount: parseFloat(form.amount),
+      description: form.description,
+      type: form.type || 'wydatek',
+      notes: form.notes || null,
+    })
+    .eq('id', id)
     .select()
     .single();
   revalidatePath('/budzet');
@@ -17,5 +49,50 @@ export async function addExpense(form: ExpenseForm) {
 
 export async function deleteExpense(id: number) {
   await supabase.from('expenses').delete().eq('id', id);
+  revalidatePath('/budzet');
+}
+
+// Bills CRUD
+type BillForm = {
+  name: string;
+  amount: string;
+  due_day: string;
+  category: string;
+};
+
+export async function addBill(form: BillForm) {
+  const { data } = await supabase
+    .from('bills')
+    .insert({
+      name: form.name,
+      amount: parseFloat(form.amount),
+      due_day: parseInt(form.due_day),
+      category: form.category,
+      active: true,
+    })
+    .select()
+    .single();
+  revalidatePath('/budzet');
+  return { bill: data };
+}
+
+export async function updateBill(id: number, form: BillForm) {
+  const { data } = await supabase
+    .from('bills')
+    .update({
+      name: form.name,
+      amount: parseFloat(form.amount),
+      due_day: parseInt(form.due_day),
+      category: form.category,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  revalidatePath('/budzet');
+  return { bill: data };
+}
+
+export async function deleteBill(id: number) {
+  await supabase.from('bills').delete().eq('id', id);
   revalidatePath('/budzet');
 }

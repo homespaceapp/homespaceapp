@@ -12,13 +12,47 @@ interface Props {
   onClose: () => void;
 }
 
-function detectCategory(tags: string[]): string {
-  const t = tags.join(' ').toLowerCase();
-  if (t.includes('meat') || t.includes('poultry') || t.includes('pork') || t.includes('beef') || t.includes('sausage')) return 'mięso';
-  if (t.includes('dairy') || t.includes('milk') || t.includes('cheese') || t.includes('butter') || t.includes('cream') || t.includes('yogurt')) return 'nabiał';
-  if (t.includes('vegetable') || t.includes('fruit') || t.includes('fresh')) return 'warzywa';
-  if (t.includes('sweet') || t.includes('candy') || t.includes('chocolate') || t.includes('cookie') || t.includes('biscuit')) return 'słodycze';
-  if (t.includes('pasta') || t.includes('rice') || t.includes('grain') || t.includes('bread') || t.includes('flour') || t.includes('cereal')) return 'suche';
+function detectCategory(tags: string[], productName?: string): string {
+  const t = (tags.join(' ') + ' ' + (productName || '')).toLowerCase();
+
+  // Napoje / woda
+  if (t.includes('water') || t.includes('woda') || t.includes('mineral') || t.includes('mineralna') ||
+      t.includes('spring') || t.includes('beverage') || t.includes('drink') || t.includes('napój') ||
+      t.includes('napoje') || t.includes('juice') || t.includes('sok') || t.includes('cola') ||
+      t.includes('lemonade') || t.includes('lemoniada') || t.includes('muszynianka') ||
+      t.includes('nałęczowianka') || t.includes('żywiec') || t.includes('bonaqua')) return 'napoje';
+
+  // Mięso
+  if (t.includes('meat') || t.includes('mięso') || t.includes('poultry') || t.includes('drób') ||
+      t.includes('pork') || t.includes('wieprzow') || t.includes('beef') || t.includes('wołow') ||
+      t.includes('sausage') || t.includes('kiełbas') || t.includes('chicken') || t.includes('kurczak') ||
+      t.includes('ham') || t.includes('szynka') || t.includes('turkey') || t.includes('indyk') ||
+      t.includes('wędlin')) return 'mięso';
+
+  // Nabiał
+  if (t.includes('dairy') || t.includes('nabiał') || t.includes('milk') || t.includes('mleko') ||
+      t.includes('cheese') || t.includes('ser') || t.includes('butter') || t.includes('masło') ||
+      t.includes('cream') || t.includes('śmietana') || t.includes('yogurt') || t.includes('jogurt') ||
+      t.includes('twaróg') || t.includes('kefir') || t.includes('quark')) return 'nabiał';
+
+  // Warzywa i owoce
+  if (t.includes('vegetable') || t.includes('warzywo') || t.includes('fruit') || t.includes('owoc') ||
+      t.includes('fresh') || t.includes('salad') || t.includes('sałat') || t.includes('tomato') ||
+      t.includes('pomidor') || t.includes('potato') || t.includes('ziemniak') || t.includes('onion') ||
+      t.includes('cebula') || t.includes('apple') || t.includes('jabłko')) return 'warzywa';
+
+  // Słodycze
+  if (t.includes('sweet') || t.includes('słodycze') || t.includes('candy') || t.includes('cukierek') ||
+      t.includes('chocolate') || t.includes('czekolad') || t.includes('cookie') || t.includes('ciastk') ||
+      t.includes('biscuit') || t.includes('wafer') || t.includes('wafl') || t.includes('jelly') ||
+      t.includes('żelk') || t.includes('gummy')) return 'słodycze';
+
+  // Suche / Pieczywo
+  if (t.includes('bread') || t.includes('chleb') || t.includes('pieczywo') || t.includes('tortill') ||
+      t.includes('pasta') || t.includes('makaron') || t.includes('rice') || t.includes('ryż') ||
+      t.includes('grain') || t.includes('kasza') || t.includes('flour') || t.includes('mąka') ||
+      t.includes('cereal') || t.includes('płatk') || t.includes('oat')) return 'suche';
+
   return 'inne';
 }
 
@@ -88,7 +122,7 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
                 if (brand && name.toLowerCase().startsWith(brand.toLowerCase())) {
                   name = name.slice(brand.length).trim().replace(/^[-,\s]+/, '');
                 }
-                category = detectCategory(p.categories_tags || []);
+                category = detectCategory(p.categories_tags || [], name);
                 setStatus(`Znaleziono: ${name}`);
               } else {
                 setStatus(`Nie znaleziono produktu — wpisz nazwę ręcznie`);
