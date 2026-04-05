@@ -38,7 +38,24 @@ export const SWEETS_LIST = [
   { name: 'BIG HIT orzech/czek', quantity: '1 paczka', unit: 'szt', category: 'słodycze' },
 ];
 
+// Produkty "zawsze sprawdź" — kończą się regularnie
+const STAPLES = [
+  { name: 'Sól', unit: 'szt', category: 'suche' },
+  { name: 'Pieprz', unit: 'szt', category: 'suche' },
+  { name: 'Olej / oliwa', unit: 'szt', category: 'suche' },
+  { name: 'Cukier', unit: 'szt', category: 'suche' },
+  { name: 'Mąka', unit: 'szt', category: 'suche' },
+];
+
+function nameMatch(pantryName: string, shoppingName: string): boolean {
+  const p = pantryName.toLowerCase().trim();
+  const s = shoppingName.toLowerCase().trim();
+  const sWords = s.split(/[\s/]+/).filter(w => w.length > 2);
+  return sWords.some(w => p.includes(w)) || p.split(/[\s/]+/).filter(w => w.length > 2).some(w => s.includes(w));
+}
+
 export async function generateShoppingList(weekNumber: number) {
+  // Zwróć istniejącą listę jeśli jest
   const { data: existing } = await supabase
     .from('shopping_lists')
     .select('id')
@@ -55,13 +72,17 @@ export async function generateShoppingList(weekNumber: number) {
     return { listId: existing.id, items: items || [] };
   }
 
-  const { data: pantry } = await supabase.from('pantry').select('name');
-  const pantryNames = (pantry || []).map((p: { name: string }) => p.name.toLowerCase());
+  // Pobierz spiżarnię z ilościami
+  const { data: pantry } = await supabase
+    .from('pantry')
+    .select('name, quantity');
+  const pantryItems = pantry || [];
 
+  // Utwórz nową listę
   const { data: list, error: listError } = await supabase
     .from('shopping_lists')
     .insert({ week_number: weekNumber, created_at: new Date().toISOString(), status: 'active' })
-    .select()
+    .select('id')
     .maybeSingle();
 
   if (listError || !list) {
@@ -69,14 +90,34 @@ export async function generateShoppingList(weekNumber: number) {
   }
 
   const listId = list.id;
-  const filtered = DEFAULT_SHOPPING.filter(item =>
-    !pantryNames.some(p => p.includes(item.name.toLowerCase().split(' ')[0]) || item.name.toLowerCase().includes(p))
-  ).map(item => ({ ...item, list_id: listId, checked: false }));
 
-  await supabase.from('shopping_items').insert(filtered);
+  // Filtruj DEFAULT_SHOPPING — pomijaj co jest w spiżarni z ilością > 0
+  const mainItems = DEFAULT_SHOPPING
+    .filter(item => {
+      const inPantry = pantryItems.find(p => nameMatch(p.name, item.name));
+      return !inPantry || inPantry.quantity <= 0;
+    })
+    .map(item => ({ ...item, list_id: listId, checked: false }));
+
+  // Dodaj STAPLES których brakuje lub mają qty <= 0
+  const staplesNeeded = STAPLES
+    .filter(s => {
+      const inPantry = pantryItems.find(p => nameMatch(p.name, s.name));
+      return !inPantry || inPantry.quantity <= 0;
+    })
+    .map(s => ({ ...s, quantity: '—', list_id: listId, checked: false }));
+
+  const toInsert = [...mainItems, ...staplesNeeded];
+
+  if (toInsert.length > 0) {
+    await supabase.from('shopping_items').insert(toInsert);
+  }
 
   const { data: items } = await supabase
-    .from('shopping_items').select('*').eq('list_id', listId).order('category');
+    .from('shopping_items')
+    .select('*')
+    .eq('list_id', listId)
+    .order('category');
 
   revalidatePath('/zakupy');
   return { listId, items: items || [] };
