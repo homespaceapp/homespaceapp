@@ -28,7 +28,7 @@ const DEFAULT_SHOPPING = [
   { name: 'Chleb', quantity: '1 bochenek', unit: 'szt', category: 'pieczywo' },
 ];
 
-export const SWEETS_LIST = [
+const SWEETS_LIST = [
   { name: 'Żelki kablowe', quantity: '1 paczka', unit: 'szt', category: 'słodycze' },
   { name: 'Żelki Frulusie', quantity: '1 paczka', unit: 'szt', category: 'słodycze' },
   { name: 'Żelki mleczne', quantity: '1 paczka', unit: 'szt', category: 'słodycze' },

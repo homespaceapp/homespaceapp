@@ -33,7 +33,8 @@ export default function ShoppingListClient({
   const [newItem, setNewItem] = useState('');
   const [newQty, setNewQty] = useState('');
   const [genError, setGenError] = useState('');
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const [, startTransition] = useTransition();
 
   const checked = items.filter(i => i.checked).length;
   const total = items.length;
@@ -47,21 +48,22 @@ export default function ShoppingListClient({
   const uncategorized = items.filter(i => !categoryOrder.includes(i.category || 'inne'));
   if (uncategorized.length > 0) grouped['inne'] = [...(grouped['inne'] || []), ...uncategorized];
 
-  function handleGenerate() {
+  async function handleGenerate() {
     setGenError('');
-    startTransition(async () => {
-      try {
-        const result = await generateShoppingList(selectedWeek);
-        if (result.error) {
-          setGenError(result.error);
-        } else if (result.listId) {
-          setListId(result.listId);
-          setItems(result.items);
-        }
-      } catch (e) {
-        setGenError(e instanceof Error ? e.message : 'Nieznany błąd');
+    setIsPending(true);
+    try {
+      const result = await generateShoppingList(selectedWeek);
+      if (result.error) {
+        setGenError(result.error);
+      } else if (result.listId) {
+        setListId(result.listId);
+        setItems(result.items as Item[]);
       }
-    });
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Nieznany błąd');
+    } finally {
+      setIsPending(false);
+    }
   }
 
   function handleToggle(itemId: number) {
