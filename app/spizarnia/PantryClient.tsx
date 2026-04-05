@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { addPantryItem, deletePantryItem, updatePantryQuantity } from './actions';
+import { addPantryItem, deletePantryItem } from './actions';
 
 type Item = { id: number; name: string; quantity: number; unit: string; category: string; purchase_date: string; expiry_days: number; notes: string };
 
