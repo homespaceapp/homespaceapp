@@ -30,10 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files (prywatne klucze)
+.env
 .env.local
 .env*.local
-# .env.production jest commitowane (tylko publiczne klucze NEXT_PUBLIC_*)
 
 # vercel
 .vercel
