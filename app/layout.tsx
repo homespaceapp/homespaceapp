@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pl" className={`${geist.variable} h-full`}>
+    <html lang="pl" className={`${geist.variable} h-full`} style={{ colorScheme: 'light' }}>
       <body className="min-h-full flex bg-zinc-50 antialiased font-sans">
         <Sidebar />
         <main className="flex-1 overflow-auto pt-14 md:pt-0 pb-16 md:pb-0 min-w-0">

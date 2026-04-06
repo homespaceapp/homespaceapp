@@ -6,12 +6,13 @@ import Link from 'next/link';
 
 type Item = { id: number; name: string; quantity: string; unit: string; checked: number; category: string };
 
-const categoryOrder = ['mięso', 'nabiał', 'warzywa', 'suche', 'pieczywo', 'słodycze', 'inne'];
+const categoryOrder = ['mięso', 'nabiał', 'warzywa', 'suche', 'przyprawy', 'pieczywo', 'słodycze', 'inne'];
 const categoryLabels: Record<string, string> = {
   mięso: '🥩 Mięso i ryby',
   nabiał: '🥛 Nabiał i jajka',
   warzywa: '🥦 Warzywa i owoce',
   suche: '🌾 Suche produkty',
+  przyprawy: '🧂 Przyprawy i oleje',
   pieczywo: '🥖 Pieczywo',
   słodycze: '🍬 Słodycze',
   inne: '🛒 Inne',

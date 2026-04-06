@@ -46,6 +46,46 @@ function nameMatch(pantryName: string, shoppingName: string): boolean {
   return sWords.some(w => p.includes(w)) || p.split(/[\s/]+/).filter(w => w.length > 2).some(w => s.includes(w));
 }
 
+// Parsuje "500g pierś kurczaka" → { qty: 500, unit: "g", name: "pierś kurczaka" }
+function parseIngredient(raw: string): { qty: number; unit: string; name: string } {
+  const s = raw.trim();
+  const m = s.match(/^(\d+[.,\/]?\d*)\s*(g|kg|ml|l|szt|łyż\w*|pusz\w*|szklan\w*|główk\w*|ząbk\w*|opakow\w*|plastr\w*|pęcz\w*|miark\w*|łyżecz\w*|saszetk\w*|płat\w*|bochenk\w*)?\s*(.+)$/i);
+  if (m) {
+    let qty = 0;
+    if (m[1].includes('/')) {
+      const [a, b] = m[1].split('/');
+      qty = parseInt(a) / parseInt(b);
+    } else {
+      qty = parseFloat(m[1].replace(',', '.'));
+    }
+    return { qty, unit: (m[2] || 'szt').toLowerCase(), name: m[3].trim() };
+  }
+  return { qty: 0, unit: '', name: s };
+}
+
+// Normalizuje nazwę do klucza grupowania: "pierś kurczaka" i "piersi kurczaka" → "pierś kurczaka"
+function ingredientKey(name: string): string {
+  return name.toLowerCase()
+    .replace(/\(.*?\)/g, '')
+    .trim()
+    .split(/\s+/)
+    .filter(w => w.length > 1)
+    .slice(0, 2)
+    .join(' ');
+}
+
+// Kategoria na podstawie nazwy składnika
+function detectShoppingCategory(name: string): string {
+  const n = name.toLowerCase();
+  if (/kurcz|pierś|udka|mięs|mielon|karkówk|boczek|kiełbas|szynk|salami|wieprzow|wołow/.test(n)) return 'mięso';
+  if (/mleko|śmietan|jogurt|ser |masło|jaj|parmezan|feta/.test(n)) return 'nabiał';
+  if (/cebul|czosn|marchew|pomidor|ogórek|papryk|sałat|kapust|ziemniak|jabłk|truskaw|awokado|limonk|imbir|groszek|kukurydz|fasol|pieczark|grzby/.test(n)) return 'warzywa';
+  if (/tortill|chleb|bułk/.test(n)) return 'pieczywo';
+  if (/makaron|ryż|kasza|mąka|passata|pesto|sos soj|mleczko kokos|drożdż|proszk|bułka tart|panierk/.test(n)) return 'suche';
+  if (/sól|pieprz|olej|oliw|cukier|cynamon|oregano|papryka .*mielon|kumin|majeran|gałka|ziele|liść|koperek|natka|kolendra/.test(n)) return 'przyprawy';
+  return 'inne';
+}
+
 export async function generateShoppingList(weekNumber: number) {
   try {
   // Zwróć istniejącą listę jeśli jest
@@ -104,22 +144,40 @@ export async function generateShoppingList(weekNumber: number) {
     if (data) mealsWithIngredients = [...mealsWithIngredients, ...data];
   }
 
-  // Parsuj składniki ze wszystkich dań tygodnia
-  const ingredientItems: { name: string; quantity: string; unit: string; category: string }[] = [];
-  const seen = new Set<string>();
+  // Parsuj i SUMUJ składniki ze wszystkich dań tygodnia
+  // np. mleko 500ml + mleko 250ml → mleko 750ml
+  const merged = new Map<string, { displayName: string; qty: number; unit: string; category: string }>();
 
   for (const meal of mealsWithIngredients) {
     if (!meal.ingredients) continue;
     for (const raw of meal.ingredients.split(',')) {
-      const ing = raw.trim();
-      if (!ing) continue;
-      const key = ing.toLowerCase().split(/[\s(]/)[0];
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const inPantry = pantryItems.find(p => nameMatch(p.name, ing));
-      if (inPantry && Number(inPantry.quantity) > 0) continue;
-      ingredientItems.push({ name: ing, quantity: '', unit: '', category: meal.category || 'inne' });
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const parsed = parseIngredient(trimmed);
+      const key = ingredientKey(parsed.name);
+      if (!key) continue;
+      const existing = merged.get(key);
+      if (existing) {
+        existing.qty += parsed.qty;
+        if (parsed.name.length > existing.displayName.length) existing.displayName = parsed.name;
+      } else {
+        merged.set(key, {
+          displayName: parsed.name,
+          qty: parsed.qty,
+          unit: parsed.unit,
+          category: detectShoppingCategory(parsed.name),
+        });
+      }
     }
+  }
+
+  // Filtruj po spiżarni i konwertuj na listę
+  const ingredientItems: { name: string; quantity: string; unit: string; category: string }[] = [];
+  for (const [, val] of merged) {
+    const inPantry = pantryItems.find(p => nameMatch(p.name, val.displayName));
+    if (inPantry && Number(inPantry.quantity) > 0) continue;
+    const qtyStr = val.qty > 0 ? `${Math.round(val.qty * 10) / 10} ${val.unit}`.trim() : '';
+    ingredientItems.push({ name: val.displayName, quantity: qtyStr, unit: val.unit, category: val.category });
   }
 
   // Fallback na DEFAULT_SHOPPING jeśli brak planu lub dania nie mają składników
@@ -177,9 +235,38 @@ export async function generateShoppingList(weekNumber: number) {
 }
 
 export async function toggleItem(itemId: number) {
-  const { data: item } = await supabase.from('shopping_items').select('checked').eq('id', itemId).single();
-  await supabase.from('shopping_items').update({ checked: !item?.checked }).eq('id', itemId);
+  const { data: item } = await supabase
+    .from('shopping_items')
+    .select('checked, name, quantity, category')
+    .eq('id', itemId)
+    .single();
+  if (!item) return;
 
+  const newChecked = !item.checked;
+  await supabase.from('shopping_items').update({ checked: newChecked }).eq('id', itemId);
+
+  // Zaznaczenie = kupione → dodaj do spiżarni
+  if (newChecked) {
+    const parsed = parseIngredient(item.name);
+    const qty = parsed.qty || 1;
+    const { data: existing } = await supabase
+      .from('pantry')
+      .select('id, quantity')
+      .ilike('name', `%${ingredientKey(parsed.name)}%`)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('pantry').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
+    } else {
+      await supabase.from('pantry').insert({
+        name: parsed.name || item.name,
+        quantity: qty,
+        unit: parsed.unit || 'szt',
+        category: detectShoppingCategory(item.name),
+        purchase_date: new Date().toISOString().slice(0, 10),
+      });
+    }
+  }
 }
 
 export async function addItem(listId: number, name: string, quantity: string) {
