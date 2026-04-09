@@ -431,7 +431,7 @@ export default function BudzetClient({
         {/* Rachunki cykliczne */}
         <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
           <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
-            <p className="text-sm font-semibold text-zinc-700">Rachunki stałe</p>
+            <p className="text-sm font-semibold text-zinc-700">Koszty stałe</p>
             <button
               onClick={openAddBill}
               className="text-xs px-2 py-1 bg-zinc-200 hover:bg-zinc-300 rounded text-zinc-700"
