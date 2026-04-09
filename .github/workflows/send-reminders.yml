@@ -2,7 +2,7 @@ name: Send Push Reminders
 
 on:
   schedule:
-    - cron: '*/5 * * * *'    # co 5 minut
+    - cron: '* * * * *'    # co minutę
   workflow_dispatch:           # można też uruchomić ręcznie
 
 jobs:
