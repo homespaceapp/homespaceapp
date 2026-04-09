@@ -496,30 +496,33 @@ export default function BudzetClient({
               <div className="divide-y divide-zinc-100">
                 {unpaid.map(b => (
                   <div key={b.id}>
-                    <div className={`flex items-center gap-3 px-4 py-3 transition-colors ${inlineEditId === b.id ? 'bg-zinc-50' : 'hover:bg-zinc-50'}`}>
-                      <button
-                        onClick={() => handleTogglePaid(b.id)}
-                        className="w-5 h-5 rounded border-2 border-zinc-300 shrink-0 flex items-center justify-center hover:border-emerald-400 transition-colors"
-                      />
-                      <div onClick={() => openInlineEdit(b)} className="flex-1 flex items-center justify-between cursor-pointer">
-                        <div>
-                          <p className="text-sm font-medium text-zinc-800">{b.name}</p>
-                          <p className="text-xs text-zinc-400">{b.due_day}. każdego miesiąca</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-zinc-700">{b.amount} zł</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            b.daysLeft <= 3 ? 'bg-red-100 text-red-700' :
-                            b.daysLeft <= 7 ? 'bg-orange-100 text-orange-700' :
-                            'bg-zinc-100 text-zinc-500'
-                          }`}>
-                            {b.daysLeft === 0 ? 'dziś' : `${b.daysLeft}d`}
-                          </span>
-                          <span className={`text-zinc-400 text-xs transition-transform ${inlineEditId === b.id ? 'rotate-90' : ''}`}>›</span>
+                    {inlineEditId === b.id ? (
+                      <BillInlineForm b={b} inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />
+                    ) : (
+                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 cursor-pointer transition-colors" onClick={() => openInlineEdit(b)}>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleTogglePaid(b.id); }}
+                          className="w-5 h-5 rounded border-2 border-zinc-300 shrink-0 flex items-center justify-center hover:border-emerald-400 transition-colors"
+                        />
+                        <div className="flex-1 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-zinc-800">{b.name}</p>
+                            <p className="text-xs text-zinc-400">{b.due_day}. każdego miesiąca</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-zinc-700">{b.amount} zł</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              b.daysLeft <= 3 ? 'bg-red-100 text-red-700' :
+                              b.daysLeft <= 7 ? 'bg-orange-100 text-orange-700' :
+                              'bg-zinc-100 text-zinc-500'
+                            }`}>
+                              {b.daysLeft === 0 ? 'dziś' : `${b.daysLeft}d`}
+                            </span>
+                            <span className="text-zinc-300 text-xs">✏️</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    {inlineEditId === b.id && <BillInlineForm b={b} inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />}
+                    )}
                   </div>
                 ))}
                 {paid.length > 0 && (
@@ -529,25 +532,28 @@ export default function BudzetClient({
                     </div>
                     {paid.map(b => (
                       <div key={b.id}>
-                        <div className={`flex items-center gap-3 px-4 py-3 bg-emerald-50 transition-colors ${inlineEditId === b.id ? '' : 'hover:bg-emerald-100'}`}>
-                          <button
-                            onClick={() => handleTogglePaid(b.id)}
-                            className="w-5 h-5 rounded border-2 bg-emerald-500 border-emerald-500 text-white shrink-0 flex items-center justify-center"
-                          >
-                            <span className="text-[10px] font-bold">✓</span>
-                          </button>
-                          <div onClick={() => openInlineEdit(b)} className="flex-1 flex items-center justify-between cursor-pointer">
-                            <div>
-                              <p className="text-sm font-medium text-zinc-400 line-through">{b.name}</p>
-                              <p className="text-xs text-zinc-400">{b.due_day}. każdego miesiąca</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-emerald-600">{b.amount} zł</span>
-                              <span className={`text-zinc-400 text-xs transition-transform ${inlineEditId === b.id ? 'rotate-90' : ''}`}>›</span>
+                        {inlineEditId === b.id ? (
+                          <BillInlineForm b={b} inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />
+                        ) : (
+                          <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 hover:bg-emerald-100 cursor-pointer transition-colors" onClick={() => openInlineEdit(b)}>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleTogglePaid(b.id); }}
+                              className="w-5 h-5 rounded border-2 bg-emerald-500 border-emerald-500 text-white shrink-0 flex items-center justify-center"
+                            >
+                              <span className="text-[10px] font-bold">✓</span>
+                            </button>
+                            <div className="flex-1 flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-zinc-400 line-through">{b.name}</p>
+                                <p className="text-xs text-zinc-400">{b.due_day}. każdego miesiąca</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-emerald-600">{b.amount} zł</span>
+                                <span className="text-zinc-300 text-xs">✏️</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        {inlineEditId === b.id && <BillInlineForm b={b} inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />}
+                        )}
                       </div>
                     ))}
                   </>
