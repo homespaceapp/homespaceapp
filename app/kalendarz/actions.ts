@@ -9,16 +9,20 @@ export async function addEvent(form: {
   time?: string;
   owner: string;
   notes?: string;
-  reminder_days?: number;
+  reminders?: number[]; // offset_minutes
 }) {
-  await supabase.from('calendar_events').insert({
-    title: form.title,
-    date: form.date,
-    time: form.time || null,
-    owner: form.owner,
-    notes: form.notes || null,
-    reminder_days: form.reminder_days ?? null,
-  });
+  const { data: event } = await supabase
+    .from('calendar_events')
+    .insert({ title: form.title, date: form.date, time: form.time || null, owner: form.owner, notes: form.notes || null })
+    .select('id')
+    .single();
+
+  if (event && form.reminders?.length) {
+    await supabase.from('calendar_reminders').insert(
+      form.reminders.map(offset_minutes => ({ event_id: event.id, offset_minutes }))
+    );
+  }
+
   revalidatePath('/kalendarz');
 }
 
