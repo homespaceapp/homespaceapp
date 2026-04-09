@@ -135,10 +135,19 @@ export default function KalendarzClient({
   async function handleSave() {
     if (!modal.form.title.trim()) return;
     setSaving(true);
+
+    // Automatycznie dodaj wpisane przypomnienie custom (bez klikania "+")
+    let remindersToSave = modal.reminders;
+    const customVal = parseInt(customReminder.value);
+    if (customVal > 0) {
+      const minutes = customVal * parseInt(customReminder.unit);
+      if (!remindersToSave.includes(minutes)) remindersToSave = [...remindersToSave, minutes];
+    }
+
     if (modal.mode === 'add') {
-      await addEvent({ ...modal.form, reminders: modal.reminders });
+      await addEvent({ ...modal.form, reminders: remindersToSave });
     } else if (modal.eventId) {
-      await updateEvent(modal.eventId, { ...modal.form, reminders: modal.reminders });
+      await updateEvent(modal.eventId, { ...modal.form, reminders: remindersToSave });
     }
     setSaving(false);
     closeModal();
