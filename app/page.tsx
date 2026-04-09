@@ -52,6 +52,14 @@ export default async function DashboardPage() {
     return daysLeft >= 0 && daysLeft <= 7;
   });
 
+  // Pobierz dzisiejsze wydarzenia z kalendarza
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const { data: todayEvents } = await supabase
+    .from('calendar_events')
+    .select('*')
+    .eq('date', todayStr)
+    .order('time', { ascending: true, nullsFirst: false });
+
   // Pobierz wygasające produkty
   const { data: pantryExpiring } = await supabase
     .from('pantry')
@@ -103,6 +111,40 @@ export default async function DashboardPage() {
               <Link href="/obiady" className="text-sm text-emerald-600 hover:underline mt-1 inline-block">
                 → Przejdź do planu obiadów
               </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Dziś w kalendarzu */}
+        <div className="md:col-span-2 bg-white rounded-xl p-5 border border-zinc-200 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Dziś w kalendarzu</p>
+            <Link href="/kalendarz" className="text-xs text-emerald-600 hover:underline">Kalendarz →</Link>
+          </div>
+          {!todayEvents?.length ? (
+            <p className="text-sm text-zinc-400">Nic zaplanowanego na dziś</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {todayEvents.map(ev => {
+                const ownerStyles: Record<string, string> = {
+                  adrian: 'bg-blue-100 text-blue-700',
+                  kasia: 'bg-pink-100 text-pink-700',
+                  oboje: 'bg-yellow-100 text-yellow-700',
+                };
+                const ownerLabels: Record<string, string> = { adrian: 'Adrian', kasia: 'Kasia', oboje: 'Oboje' };
+                return (
+                  <div key={ev.id} className="flex items-start gap-2.5">
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${ownerStyles[ev.owner] || 'bg-zinc-100 text-zinc-600'}`}>
+                      {ownerLabels[ev.owner] || ev.owner}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-800">{ev.title}</p>
+                      {ev.time && <p className="text-xs text-zinc-400">{ev.time}</p>}
+                      {ev.notes && <p className="text-xs text-zinc-400">{ev.notes}</p>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
