@@ -98,7 +98,11 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
     startTransition(async () => {
       const result = await addPantryItem(form);
       if (result.item) {
-        setItems(prev => [...prev, result.item as Item]);
+        if (result.wasUpdated) {
+          setItems(prev => prev.map(i => i.id === (result.item as Item).id ? result.item as Item : i));
+        } else {
+          setItems(prev => [...prev, result.item as Item]);
+        }
         setForm({ name: '', quantity: '', unit: 'szt', category: 'inne', purchase_date: '', expiry_days: '' });
         setShowForm(false);
       }

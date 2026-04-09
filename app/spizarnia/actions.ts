@@ -23,7 +23,7 @@ export async function addPantryItem(form: PantryForm) {
       .select()
       .single();
     revalidatePath('/spizarnia');
-    return { item: data };
+    return { item: data, wasUpdated: true };
   }
 
   const { data } = await supabase
