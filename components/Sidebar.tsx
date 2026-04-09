@@ -19,6 +19,7 @@ const secondaryNav = [
   { href: '/czat', label: 'Czat', icon: '💬' },
   { href: '/notatki', label: 'Notatki', icon: '📝' },
   { href: '/kontakty', label: 'Kontakty', icon: '📞' },
+  { href: '/planowane', label: 'Planowane', icon: '🛍️' },
   { href: '/statystyki', label: 'Statystyki', icon: '📊' },
 ];
 

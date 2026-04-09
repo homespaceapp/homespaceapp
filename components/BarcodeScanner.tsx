@@ -5,6 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 interface ProductInfo {
   name: string;
   category: string;
+  protein_per_100g?: number | null;
+  fat_per_100g?: number | null;
+  carbs_per_100g?: number | null;
+  kcal_per_100g?: number | null;
 }
 
 interface Props {
@@ -103,10 +107,11 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
             // Open Food Facts lookup
             let name = code;
             let category = 'inne';
+            let protein: number | null = null, fat: number | null = null, carbs: number | null = null, kcal: number | null = null;
             try {
               const res = await fetch(
                 `https://world.openfoodfacts.org/api/v0/product/${code}.json`,
-                { signal: AbortSignal.timeout(5000) }
+                { signal: AbortSignal.timeout(6000) }
               );
               const data = await res.json();
               if (data.status === 1 && data.product) {
@@ -123,7 +128,13 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
                   name = name.slice(brand.length).trim().replace(/^[-,\s]+/, '');
                 }
                 category = detectCategory(p.categories_tags || [], name);
-                setStatus(`Znaleziono: ${name}`);
+                const n = p.nutriments || {};
+                protein = n['proteins_100g'] ?? n['proteins'] ?? null;
+                fat     = n['fat_100g']     ?? n['fat']      ?? null;
+                carbs   = n['carbohydrates_100g'] ?? n['carbohydrates'] ?? null;
+                kcal    = n['energy-kcal_100g']   ?? n['energy-kcal']  ?? null;
+                const nutInfo = protein != null ? ` · 💪${Math.round(protein)}g B` : '';
+                setStatus(`Znaleziono: ${name}${nutInfo}`);
               } else {
                 setStatus(`Nie znaleziono produktu — wpisz nazwę ręcznie`);
               }
@@ -131,7 +142,7 @@ export default function BarcodeScanner({ onScan, onClose }: Props) {
               setStatus(`Brak internetu — wpisz nazwę ręcznie`);
             }
 
-            setTimeout(() => onScan({ name, category }), 600);
+            setTimeout(() => onScan({ name, category, protein_per_100g: protein, fat_per_100g: fat, carbs_per_100g: carbs, kcal_per_100g: kcal }), 600);
           } catch {
             // detector failed, retry
           }

@@ -3,7 +3,7 @@
 import { supabase } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
-type PantryForm = { name: string; quantity: string; unit: string; category: string; purchase_date: string; expiry_days: string };
+type PantryForm = { name: string; quantity: string; unit: string; category: string; purchase_date: string; expiry_days: string; protein_per_100g?: number | null; fat_per_100g?: number | null; carbs_per_100g?: number | null; kcal_per_100g?: number | null };
 
 export async function addPantryItem(form: PantryForm) {
   const newQty = parseFloat(form.quantity) || 1;
@@ -35,6 +35,10 @@ export async function addPantryItem(form: PantryForm) {
       category: form.category,
       purchase_date: form.purchase_date || null,
       expiry_days: form.expiry_days ? parseInt(form.expiry_days) : null,
+      ...(form.protein_per_100g != null && { protein_per_100g: form.protein_per_100g }),
+      ...(form.fat_per_100g != null && { fat_per_100g: form.fat_per_100g }),
+      ...(form.carbs_per_100g != null && { carbs_per_100g: form.carbs_per_100g }),
+      ...(form.kcal_per_100g != null && { kcal_per_100g: form.kcal_per_100g }),
     })
     .select()
     .single();

@@ -3,7 +3,6 @@ import { supabase } from '@/lib/db';
 import * as webpush from 'web-push';
 
 export async function GET(req: NextRequest) {
-  // Prosty token auth — zabezpieczenie przed losowymi requestami
   const token = req.nextUrl.searchParams.get('token');
   if (token !== process.env.REMINDER_TOKEN && process.env.REMINDER_TOKEN) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -17,7 +16,6 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
 
-  // Pobierz wszystkie niezapisane przypomnienia + dane wydarzenia
   const { data: reminders } = await supabase
     .from('calendar_reminders')
     .select('*, calendar_events(*)')
@@ -37,21 +35,18 @@ export async function GET(req: NextRequest) {
     if (!event) continue;
 
     const eventTime = event.time || '09:00';
-    const eventDatetime = new Date(`${event.date}T${eventTime}:00`);
 
-    // Kiedy powinno wyjść przypomnienie
+    // Konwersja czasu events (czas warszawski) na UTC
+    // Vercel działa w UTC — "14:00" wprowadzone przez użytkownika w Warszawie = 12:00 UTC latem
+    const eventDatetime = parseWarsawTime(event.date, eventTime);
     const reminderAt = new Date(eventDatetime.getTime() - reminder.offset_minutes * 60 * 1000);
 
-    // Wyślij jeśli: czas przypomnienia już minął (lub za mniej niż 5 min) i wydarzenie jeszcze nie minęło
     if (reminderAt > new Date(now.getTime() + 5 * 60 * 1000)) continue; // za wcześnie
-    if (eventDatetime < new Date(now.getTime() - 60 * 60 * 1000)) continue; // wydarzenie minęło >1h temu
+    if (eventDatetime < new Date(now.getTime() - 2 * 60 * 60 * 1000)) continue; // minęło >2h
 
-    const targets = subs.filter(s =>
-      event.owner === 'oboje' || s.owner === event.owner
-    );
-
+    const targets = subs.filter(s => event.owner === 'oboje' || s.owner === event.owner);
     const offsetLabel = formatOffset(reminder.offset_minutes);
-    const dateLabel = eventDatetime.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' });
+    const dateLabel = eventDatetime.toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw', day: 'numeric', month: 'long' });
 
     for (const sub of targets) {
       try {
@@ -70,11 +65,26 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Oznacz jako wysłane
     await supabase.from('calendar_reminders').update({ sent_at: now.toISOString() }).eq('id', reminder.id);
   }
 
   return NextResponse.json({ sent, checked: reminders.length });
+}
+
+/**
+ * Parsuje datę i czas wpisane przez użytkownika jako czas warszawski (Europe/Warsaw)
+ * i zwraca odpowiedni obiekt Date (UTC).
+ * Obsługuje zarówno CET (UTC+1 zimą) jak i CEST (UTC+2 latem).
+ */
+function parseWarsawTime(dateStr: string, timeStr: string): Date {
+  // Tworzymy tymczasową datę "jako UTC" żeby potem wyliczyć offset Warszawy
+  const naiveUTC = new Date(`${dateStr}T${timeStr}:00Z`);
+  // Co Warsaw pokaże dla tej chwili w UTC?
+  const warsawLocal = new Date(naiveUTC.toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
+  // Różnica = offset Warsaw od UTC w ms (np. CEST = +7200000)
+  const offsetMs = warsawLocal.getTime() - naiveUTC.getTime();
+  // Aby przeliczyć czas Warsaw → UTC: odejmij offset
+  return new Date(naiveUTC.getTime() - offsetMs);
 }
 
 function formatOffset(minutes: number): string {

@@ -6,7 +6,7 @@ import { addPantryItem, deletePantryItem, updatePantryItem } from './actions';
 
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), { ssr: false });
 
-type Item = { id: number; name: string; quantity: number; unit: string; category: string; purchase_date: string; expiry_days: number; notes: string };
+type Item = { id: number; name: string; quantity: number; unit: string; category: string; purchase_date: string; expiry_days: number; notes: string; protein_per_100g?: number | null; fat_per_100g?: number | null; carbs_per_100g?: number | null; kcal_per_100g?: number | null };
 
 const EXPIRY_DEFAULTS: Record<string, number> = {
   'kurczak': 2, 'mięso mielone': 1, 'karkówka': 2, 'wieprzowina': 2,
@@ -70,7 +70,7 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
   const firstMatchRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [showScanner, setShowScanner] = useState(false);
-  const [form, setForm] = useState({ name: '', quantity: '', unit: 'szt', category: 'inne', purchase_date: '', expiry_days: '' });
+  const [form, setForm] = useState<{ name: string; quantity: string; unit: string; category: string; purchase_date: string; expiry_days: string; protein_per_100g: number | null; fat_per_100g: number | null; carbs_per_100g: number | null; kcal_per_100g: number | null }>({ name: '', quantity: '', unit: 'szt', category: 'inne', purchase_date: '', expiry_days: '', protein_per_100g: null, fat_per_100g: null, carbs_per_100g: null, kcal_per_100g: null });
   const [editId, setEditId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: '', quantity: '', unit: 'szt', category: 'inne', expiry_days: '' });
   const [isPending, startTransition] = useTransition();
@@ -108,7 +108,7 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
         } else {
           setItems(prev => [...prev, result.item as Item]);
         }
-        setForm({ name: '', quantity: '', unit: 'szt', category: 'inne', purchase_date: '', expiry_days: '' });
+        setForm({ name: '', quantity: '', unit: 'szt', category: 'inne', purchase_date: '', expiry_days: '', protein_per_100g: null, fat_per_100g: null, carbs_per_100g: null, kcal_per_100g: null });
         setShowForm(false);
       }
     });
@@ -159,7 +159,7 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
     }));
   }
 
-  function handleScanned({ name, category }: { name: string; category: string }) {
+  function handleScanned({ name, category, protein_per_100g, fat_per_100g, carbs_per_100g, kcal_per_100g }: { name: string; category: string; protein_per_100g?: number | null; fat_per_100g?: number | null; carbs_per_100g?: number | null; kcal_per_100g?: number | null }) {
     setShowScanner(false);
     setForm(prev => ({
       ...prev,
@@ -171,6 +171,10 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
         const match = Object.entries(EXPIRY_DEFAULTS).find(([k]) => lower.includes(k));
         return match ? String(match[1]) : prev.expiry_days;
       })(),
+      protein_per_100g: protein_per_100g ?? null,
+      fat_per_100g: fat_per_100g ?? null,
+      carbs_per_100g: carbs_per_100g ?? null,
+      kcal_per_100g: kcal_per_100g ?? null,
     }));
     setShowForm(true);
   }
@@ -299,6 +303,16 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
               />
             </div>
           </div>
+          {/* Nutrition preview (filled from barcode scan) */}
+          {(form.kcal_per_100g != null || form.protein_per_100g != null) && (
+            <div className="flex flex-wrap gap-2 mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+              <span className="text-xs text-emerald-700 font-medium w-full mb-1">Wartości odżywcze / 100g:</span>
+              {form.kcal_per_100g != null && <span className="text-xs px-2 py-0.5 bg-white rounded-full border border-emerald-200 text-zinc-600">🔥 {Math.round(form.kcal_per_100g)} kcal</span>}
+              {form.protein_per_100g != null && <span className="text-xs px-2 py-0.5 bg-white rounded-full border border-emerald-200 text-zinc-600">💪 {Math.round(form.protein_per_100g)}g białka</span>}
+              {form.fat_per_100g != null && <span className="text-xs px-2 py-0.5 bg-white rounded-full border border-emerald-200 text-zinc-600">🥑 {Math.round(form.fat_per_100g)}g tłuszczu</span>}
+              {form.carbs_per_100g != null && <span className="text-xs px-2 py-0.5 bg-white rounded-full border border-emerald-200 text-zinc-600">🌾 {Math.round(form.carbs_per_100g)}g węglowodanów</span>}
+            </div>
+          )}
           <div className="flex gap-2 mt-3">
             <button
               type="submit"
@@ -416,9 +430,13 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
                         onClick={() => handleEditOpen(item)}
                       >
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-medium text-zinc-800"><Highlight text={item.name} query={search} /></span>
                             <ExpiryBadge item={item} />
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {item.kcal_per_100g != null && <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded-full">🔥{Math.round(item.kcal_per_100g)}</span>}
+                            {item.protein_per_100g != null && <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full">💪{Math.round(item.protein_per_100g)}g</span>}
                           </div>
                           {item.notes && <p className="text-xs text-zinc-400 mt-0.5">{item.notes}</p>}
                         </div>
