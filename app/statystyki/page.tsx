@@ -61,7 +61,7 @@ export default async function StatystykiPage() {
   });
 
   const currentMonth = byMonth[0];
-  const maxBar = Math.max(...Object.values(currentMonth.byCat), 1);
+  const maxBar = Math.max(...(Object.values(currentMonth.byCat) as number[]), 1);
 
   const billsTotal = (bills || []).reduce((s, b) => s + (b.amount || 0), 0);
 
@@ -127,7 +127,7 @@ export default async function StatystykiPage() {
               <div
                 className="mx-auto mb-2 rounded-t-lg bg-emerald-400"
                 style={{
-                  height: `${Math.max(8, (m.total / Math.max(...byMonth.map(x => x.total), 1)) * 80)}px`,
+                  height: `${Math.max(8, (m.total / Math.max(...byMonth.map(x => x.total as number), 1)) * 80)}px`,
                   width: '100%',
                   maxWidth: '60px',
                   opacity: i === 0 ? 1 : i === 1 ? 0.7 : 0.4,

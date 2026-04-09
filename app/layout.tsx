@@ -6,13 +6,13 @@ import Sidebar from '@/components/Sidebar';
 const geist = Geist({ variable: '--font-geist', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Loszki — Panel domowy',
+  title: 'Wieloszki — Panel domowy',
   description: 'Panel zarządzania gospodarstwem domowym',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Loszki',
+    title: 'Wieloszki',
   },
   icons: {
     icon: '/boar.svg',

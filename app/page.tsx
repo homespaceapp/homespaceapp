@@ -88,7 +88,7 @@ export default async function DashboardPage() {
         <p className="text-zinc-500 text-sm mt-0.5">Tydzień {weekNum}</p>
       </div>
 
-      {/* Wiersz 1: Kalendarz (col-span-2) + Spiżarnia */}
+      {/* Wiersz 1: Kalendarz (col-span-2) + Płatności */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 
         {/* Dziś w kalendarzu */}
@@ -116,27 +116,27 @@ export default async function DashboardPage() {
           <p className="text-xs text-emerald-500 mt-3">→ Kalendarz</p>
         </Link>
 
-        {/* Spiżarnia */}
-        <Link href="/spizarnia" className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm hover:border-red-300 hover:shadow-md transition-all block">
-          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">📦 Spiżarnia</p>
-          {visibleExpiring.length === 0 ? (
-            <p className="text-sm text-emerald-600">✓ Nic nie wygasa</p>
+        {/* Płatności */}
+        <Link href="/budzet" className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm hover:border-orange-300 hover:shadow-md transition-all block">
+          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">💳 Płatności</p>
+          {visibleBills.length === 0 ? (
+            <p className="text-sm text-emerald-600">✓ Nic w tym tygodniu</p>
           ) : (
             <div className="flex flex-col gap-1.5">
-              {visibleExpiring.map((p, i) => (
+              {visibleBills.map((b, i) => (
                 <div key={i} className="text-xs">
-                  <span className="text-red-500">⚠️ </span>
-                  <span className="font-medium text-zinc-700">{p.name}</span>
+                  <span className="font-medium text-zinc-700">{b.name}</span>
+                  <span className="text-zinc-400"> — {b.due_day}. ({b.amount} zł)</span>
                 </div>
               ))}
-              {moreExpiring > 0 && <p className="text-xs text-zinc-400">+{moreExpiring} więcej…</p>}
+              {moreBills > 0 && <p className="text-xs text-zinc-400">+{moreBills} więcej…</p>}
             </div>
           )}
-          <p className="text-xs text-red-400 mt-3">→ Spiżarnia</p>
+          <p className="text-xs text-orange-400 mt-3">→ Budżet</p>
         </Link>
       </div>
 
-      {/* Wiersz 2: Obiad (col-span-2) + Płatności */}
+      {/* Wiersz 2: Obiad (col-span-2) + Spiżarnia */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 
         {/* Dziś na obiad — link do konkretnego kafelka z przepisem */}
@@ -162,23 +162,23 @@ export default async function DashboardPage() {
           )}
         </Link>
 
-        {/* Płatności */}
-        <Link href="/budzet" className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm hover:border-orange-300 hover:shadow-md transition-all block">
-          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">💳 Płatności</p>
-          {visibleBills.length === 0 ? (
-            <p className="text-sm text-emerald-600">✓ Nic w tym tygodniu</p>
+        {/* Spiżarnia */}
+        <Link href="/spizarnia" className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm hover:border-red-300 hover:shadow-md transition-all block">
+          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">📦 Spiżarnia</p>
+          {visibleExpiring.length === 0 ? (
+            <p className="text-sm text-emerald-600">✓ Nic nie wygasa</p>
           ) : (
             <div className="flex flex-col gap-1.5">
-              {visibleBills.map((b, i) => (
+              {visibleExpiring.map((p, i) => (
                 <div key={i} className="text-xs">
-                  <span className="font-medium text-zinc-700">{b.name}</span>
-                  <span className="text-zinc-400"> — {b.due_day}. ({b.amount} zł)</span>
+                  <span className="text-red-500">⚠️ </span>
+                  <span className="font-medium text-zinc-700">{p.name}</span>
                 </div>
               ))}
-              {moreBills > 0 && <p className="text-xs text-zinc-400">+{moreBills} więcej…</p>}
+              {moreExpiring > 0 && <p className="text-xs text-zinc-400">+{moreExpiring} więcej…</p>}
             </div>
           )}
-          <p className="text-xs text-orange-400 mt-3">→ Budżet</p>
+          <p className="text-xs text-red-400 mt-3">→ Spiżarnia</p>
         </Link>
       </div>
 
