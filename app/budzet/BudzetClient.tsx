@@ -63,8 +63,7 @@ function emptyBillForm() {
   return { name: '', amount: '', due_day: '10', category: 'czynsz' };
 }
 
-function BillInlineForm({ b, inlineForm, setInlineForm, isPending, onSave, onDelete, onCancel }: {
-  b: Bill;
+function BillInlineForm({ inlineForm, setInlineForm, isPending, onSave, onDelete, onCancel }: {
   inlineForm: ReturnType<typeof emptyBillForm>;
   setInlineForm: React.Dispatch<React.SetStateAction<ReturnType<typeof emptyBillForm>>>;
   isPending: boolean;
@@ -497,7 +496,7 @@ export default function BudzetClient({
                 {unpaid.map(b => (
                   <div key={b.id}>
                     {inlineEditId === b.id ? (
-                      <BillInlineForm b={b} inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />
+                      <BillInlineForm inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />
                     ) : (
                       <div className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 cursor-pointer transition-colors" onClick={() => openInlineEdit(b)}>
                         <button
@@ -533,7 +532,7 @@ export default function BudzetClient({
                     {paid.map(b => (
                       <div key={b.id}>
                         {inlineEditId === b.id ? (
-                          <BillInlineForm b={b} inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />
+                          <BillInlineForm inlineForm={inlineForm} setInlineForm={setInlineForm} isPending={isPending} onSave={e => handleInlineSave(e, b.id)} onDelete={() => { if (confirm(`Usuń "${b.name}"?`)) { handleDeleteBill(b.id); setInlineEditId(null); } }} onCancel={() => setInlineEditId(null)} />
                         ) : (
                           <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 hover:bg-emerald-100 cursor-pointer transition-colors" onClick={() => openInlineEdit(b)}>
                             <button
