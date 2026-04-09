@@ -35,7 +35,7 @@ RACHUNKI: ${billsText}
 DATA: ${today.toLocaleDateString('pl-PL')}`;
 }
 
-export async function sendMessage(messages: Message[]): Promise<string> {
+export async function sendMessage(messages: Message[], imageBase64?: string, imageMime?: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return 'Brak klucza ANTHROPIC_API_KEY. Dodaj go w ustawieniach Vercel → Environment Variables.';
@@ -44,11 +44,33 @@ export async function sendMessage(messages: Message[]): Promise<string> {
   const context = await getContext();
   const client = new Anthropic({ apiKey });
 
+  // Przygotuj wiadomości — jeśli mamy obraz, wstaw go do ostatniej wiadomości użytkownika
+  const apiMessages = messages.slice(-10).map((m, i) => {
+    const isLast = i === messages.slice(-10).length - 1;
+    if (isLast && m.role === 'user' && imageBase64 && imageMime) {
+      return {
+        role: 'user' as const,
+        content: [
+          {
+            type: 'image' as const,
+            source: {
+              type: 'base64' as const,
+              media_type: imageMime as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
+              data: imageBase64,
+            },
+          },
+          { type: 'text' as const, text: m.content },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
-    system: `Jesteś Agentem Loszki — asystentem domowym Adriana i Kasi. Odpowiadasz po polsku, krótko i konkretnie.\n\n${context}`,
-    messages: messages.map(m => ({ role: m.role, content: m.content })),
+    system: `Jesteś Agentem Loszki — asystentem domowym Adriana i Kasi. Odpowiadasz po polsku, krótko i konkretnie. Gdy analizujesz paragon, wypisz produkty w formacie listy: "- Nazwa produktu (ilość, cena jeśli widoczna)".\n\n${context}`,
+    messages: apiMessages,
   });
 
   return (response.content[0] as { text: string }).text;

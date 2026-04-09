@@ -1,0 +1,15 @@
+name: Send Push Reminders
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # co 30 minut
+  workflow_dispatch:           # można też uruchomić ręcznie
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger send-reminders endpoint
+        run: |
+          curl -sf "https://loszkiapp.vercel.app/api/push/send-reminders?token=${{ secrets.REMINDER_TOKEN }}" \
+            && echo "OK" || echo "No reminders / endpoint error"

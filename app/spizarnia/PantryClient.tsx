@@ -25,6 +25,10 @@ const categoryLabels: Record<string, string> = {
   suche: '🌾 Suche / Zapas',
   napoje: '🥤 Napoje / Woda',
   słodycze: '🍬 Słodycze',
+  chemia: '🧴 Chemia domowa',
+  higiena: '🪥 Higiena',
+  apteczka: '💊 Apteczka',
+  karma: '🐾 Karma',
   inne: '📦 Inne',
 };
 
