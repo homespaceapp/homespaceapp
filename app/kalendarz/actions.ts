@@ -26,6 +26,33 @@ export async function addEvent(form: {
   revalidatePath('/kalendarz');
 }
 
+export async function updateEvent(id: string, form: {
+  title: string;
+  date: string;
+  time?: string;
+  owner: string;
+  notes?: string;
+  reminders?: number[];
+}) {
+  await supabase.from('calendar_events').update({
+    title: form.title,
+    date: form.date,
+    time: form.time || null,
+    owner: form.owner,
+    notes: form.notes || null,
+  }).eq('id', id);
+
+  // Wymień przypomnienia: usuń stare, wstaw nowe
+  await supabase.from('calendar_reminders').delete().eq('event_id', id);
+  if (form.reminders?.length) {
+    await supabase.from('calendar_reminders').insert(
+      form.reminders.map(offset_minutes => ({ event_id: id, offset_minutes }))
+    );
+  }
+
+  revalidatePath('/kalendarz');
+}
+
 export async function deleteEvent(id: string) {
   await supabase.from('calendar_events').delete().eq('id', id);
   revalidatePath('/kalendarz');
