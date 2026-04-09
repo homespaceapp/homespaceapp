@@ -6,6 +6,7 @@ import { addNote, updateNote, deleteNote } from './actions';
 type Note = { id: string; owner: string; title: string; body: string | null; color: string; pinned: boolean; created_at: string };
 
 const COLORS: Record<string, { bg: string; border: string; dot: string }> = {
+  red:    { bg: 'bg-red-50',    border: 'border-red-400',    dot: 'bg-red-500' },
   yellow: { bg: 'bg-yellow-50', border: 'border-yellow-300', dot: 'bg-yellow-400' },
   blue:   { bg: 'bg-blue-50',   border: 'border-blue-300',   dot: 'bg-blue-400' },
   green:  { bg: 'bg-emerald-50', border: 'border-emerald-300', dot: 'bg-emerald-400' },
@@ -156,12 +157,22 @@ export default function NotatkiClient({ initialNotes }: { initialNotes: Note[] }
                     rows={3}
                     className="w-full px-2 py-1 text-sm border border-zinc-200 rounded-lg resize-none mb-2 bg-white"
                   />
-                  <div className="flex gap-2 mb-2">
-                    {Object.entries(COLORS).map(([col, s]) => (
-                      <button key={col} type="button" onClick={() => setEditForm(p => ({ ...p, color: col }))}
-                        className={`w-5 h-5 rounded-full ${s.dot} ${editForm.color === col ? 'ring-2 ring-offset-1 ring-zinc-500' : ''}`}
-                      />
-                    ))}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex gap-2">
+                      {Object.entries(COLORS).map(([col, s]) => (
+                        <button key={col} type="button" onClick={() => setEditForm(p => ({ ...p, color: col }))}
+                          className={`w-5 h-5 rounded-full ${s.dot} ${editForm.color === col ? 'ring-2 ring-offset-1 ring-zinc-500' : ''}`}
+                          title={col === 'red' ? '🔴 Bardzo ważne' : col}
+                        />
+                      ))}
+                    </div>
+                    <select
+                      value={editForm.owner}
+                      onChange={e => setEditForm(p => ({ ...p, owner: e.target.value }))}
+                      className="px-2 py-1 text-xs border border-zinc-200 rounded-lg bg-white"
+                    >
+                      {Object.entries(ownerLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
                   </div>
                   <div className="flex gap-1.5 text-xs">
                     <button type="submit" disabled={isPending} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">Zapisz</button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 
 import {
   addExpense, updateExpense, deleteExpense,
@@ -91,6 +91,8 @@ export default function BudzetClient({
   const [filterMonth, setFilterMonth] = useState(currentMonth);
 
   const [isPending, startTransition] = useTransition();
+  const expFormRef = useRef<HTMLDivElement>(null);
+  const billFormRef = useRef<HTMLDivElement>(null);
 
   const filteredExpenses = expenses.filter(e => e.date.startsWith(filterMonth));
 
@@ -118,12 +120,14 @@ export default function BudzetClient({
     setEditExp(null);
     setExpForm(emptyExpenseForm(filterMonth));
     setShowExpForm(true);
+    setTimeout(() => expFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   }
 
   function openAddIncome() {
     setEditExp(null);
     setExpForm({ ...emptyExpenseForm(filterMonth), type: 'przychód' });
     setShowExpForm(true);
+    setTimeout(() => expFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   }
 
   function openEditExp(e: Expense) {
@@ -165,6 +169,7 @@ export default function BudzetClient({
     setEditBill(null);
     setBillForm(emptyBillForm());
     setShowBillForm(true);
+    setTimeout(() => billFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
   }
 
   function openEditBill(b: Bill) {
@@ -363,6 +368,7 @@ export default function BudzetClient({
             </button>
           </div>
 
+          <div ref={billFormRef} />
           {showBillForm && (
             <form onSubmit={handleBillSubmit} className="p-4 border-b border-zinc-100 bg-zinc-50">
               <p className="text-xs font-semibold text-zinc-500 mb-2">{editBill ? 'Edytuj rachunek' : 'Nowy rachunek'}</p>
@@ -470,6 +476,7 @@ export default function BudzetClient({
             </button>
           </div>
 
+          <div ref={expFormRef} />
           {showExpForm && (
             <form onSubmit={handleExpSubmit} className="p-4 border-b border-zinc-100 bg-zinc-50">
               <p className="text-xs font-semibold text-zinc-500 mb-2">{editExp ? 'Edytuj wpis' : 'Nowy wpis'}</p>
