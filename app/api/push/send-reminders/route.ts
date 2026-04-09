@@ -2,14 +2,13 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 import * as webpush from 'web-push';
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 // Cron: co godzinę — sprawdza czy jakieś przypomnienie powinno wyjść teraz
 export async function GET() {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT!,
+    process.env.VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!
+  );
   const now = new Date();
   // Okno: ±5 minut od pełnej godziny
   const windowStart = new Date(now);
