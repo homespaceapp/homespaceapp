@@ -64,6 +64,7 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const firstMatchRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [showScanner, setShowScanner] = useState(false);
   const [form, setForm] = useState({ name: '', quantity: '', unit: 'szt', category: 'inne', purchase_date: '', expiry_days: '' });
   const [editId, setEditId] = useState<number | null>(null);
@@ -109,7 +110,7 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
     });
   }
 
-  function handleEditOpen(item: Item) {
+  function handleEditOpen(item: Item, scroll = false) {
     setEditId(item.id);
     setEditForm({
       name: item.name,
@@ -118,6 +119,11 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
       category: item.category,
       expiry_days: item.expiry_days ? String(item.expiry_days) : '',
     });
+    if (scroll) {
+      setTimeout(() => {
+        itemRefs.current[item.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+    }
   }
 
   function handleEditSave(e: React.FormEvent) {
@@ -214,14 +220,20 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
       {/* Alerty */}
       {expiring.length > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-5">
-          <p className="text-sm font-semibold text-orange-800 mb-2">⚠️ Użyj wkrótce</p>
-          <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold text-orange-800 mb-3">⚠️ Użyj wkrótce — kliknij żeby edytować</p>
+          <div className="flex flex-wrap gap-2">
             {expiring.map(item => (
-              <div key={item.id} className="flex items-center gap-2 text-sm">
-                <ExpiryBadge item={item} />
-                <span className="text-orange-700 font-medium">{item.name}</span>
-                <span className="text-orange-500">{item.quantity} {item.unit}</span>
-              </div>
+              <button
+                key={item.id}
+                onClick={() => handleEditOpen(item, true)}
+                className="flex flex-col items-start gap-1 bg-white border border-orange-200 rounded-xl px-3 py-2.5 shadow-sm hover:border-orange-400 hover:shadow-md transition-all text-left active:scale-[0.98]"
+              >
+                <span className="text-sm font-semibold text-zinc-800">{item.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <ExpiryBadge item={item} />
+                  <span className="text-xs text-zinc-400">{item.quantity} {item.unit}</span>
+                </div>
+              </button>
             ))}
           </div>
         </div>
@@ -324,7 +336,10 @@ export default function PantryClient({ initialItems }: { initialItems: Item[] })
               </div>
               <div className="divide-y divide-zinc-100">
                 {catItems.map(item => (
-                  <div key={item.id} ref={search.trim() && item.id === filtered[0]?.id ? firstMatchRef : undefined}>
+                  <div key={item.id} ref={el => {
+                    itemRefs.current[item.id] = el;
+                    if (search.trim() && item.id === filtered[0]?.id) (firstMatchRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+                  }}>
                     {editId === item.id ? (
                       <form onSubmit={handleEditSave} className="px-4 py-3 bg-zinc-50">
                         <div className="grid grid-cols-2 gap-2 mb-2">
