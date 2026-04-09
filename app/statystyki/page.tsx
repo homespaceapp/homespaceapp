@@ -98,7 +98,7 @@ export default async function StatystykiPage() {
           <p className="text-sm text-zinc-400">Brak wydatków w tym miesiącu</p>
         ) : (
           <div className="flex flex-col gap-3">
-            {Object.entries(currentMonth.byCat)
+            {(Object.entries(currentMonth.byCat) as [string, number][])
               .sort(([, a], [, b]) => b - a)
               .map(([cat, amt]) => (
                 <div key={cat}>
