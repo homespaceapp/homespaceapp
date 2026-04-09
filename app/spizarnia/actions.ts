@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { sendPushToAll } from '@/lib/push';
 
 type PantryForm = { name: string; quantity: string; unit: string; category: string; purchase_date: string; expiry_days: string; protein_per_100g?: number | null; fat_per_100g?: number | null; carbs_per_100g?: number | null; kcal_per_100g?: number | null };
 
@@ -42,6 +43,9 @@ export async function addPantryItem(form: PantryForm) {
     })
     .select()
     .single();
+  if (data) {
+    await sendPushToAll({ title: '📦 Spiżarnia', body: `Dodano: ${form.name}`, url: '/spizarnia', tag: 'pantry' });
+  }
   revalidatePath('/spizarnia');
   return { item: data };
 }

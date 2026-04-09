@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { sendPushToAll } from '@/lib/push';
 
 type ExpenseForm = {
   date: string;
@@ -93,9 +94,13 @@ export async function updateBill(id: number, form: BillForm) {
 }
 
 export async function toggleBillPaid(id: number, currentMonth: string) {
-  const { data: bill } = await supabase.from('bills').select('last_paid_month').eq('id', id).single();
-  const newMonth = (bill as { last_paid_month?: string } | null)?.last_paid_month === currentMonth ? null : currentMonth;
+  const { data: bill } = await supabase.from('bills').select('name, last_paid_month').eq('id', id).single();
+  const billData = bill as { name: string; last_paid_month?: string } | null;
+  const newMonth = billData?.last_paid_month === currentMonth ? null : currentMonth;
   await supabase.from('bills').update({ last_paid_month: newMonth }).eq('id', id);
+  if (newMonth !== null && billData?.name) {
+    await sendPushToAll({ title: '💳 Opłacono rachunek', body: billData.name, url: '/budzet', tag: 'bills' });
+  }
   revalidatePath('/budzet');
   return { paid: newMonth !== null };
 }

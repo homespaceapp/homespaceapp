@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { sendPushToAll, OWNER_LABELS } from '@/lib/push';
 
 export async function addEvent(form: {
   title: string;
@@ -22,6 +23,10 @@ export async function addEvent(form: {
       form.reminders.map(offset_minutes => ({ event_id: event.id, offset_minutes }))
     );
   }
+
+  const actor = OWNER_LABELS[form.owner] || 'Ktoś';
+  const dateLabel = new Date(form.date + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+  await sendPushToAll({ title: '📅 Nowe wydarzenie', body: `${actor}: ${form.title} — ${dateLabel}${form.time ? ', ' + form.time : ''}`, url: '/kalendarz', tag: 'calendar' });
 
   revalidatePath('/kalendarz');
 }

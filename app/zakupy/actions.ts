@@ -1,6 +1,7 @@
 'use server';
 
 import { supabase } from '@/lib/db';
+import { sendPushToAll } from '@/lib/push';
 // revalidatePath removed — strona ma force-dynamic, niepotrzebne i crashuje w Next.js 15
 
 const DEFAULT_SHOPPING = [
@@ -278,6 +279,9 @@ export async function addItem(listId: number, name: string, quantity: string) {
     .select()
     .single();
 
+  if (data) {
+    await sendPushToAll({ title: '🛒 Lista zakupów', body: `Dodano: ${name}${quantity ? ' (' + quantity + ')' : ''}`, url: '/zakupy', tag: 'shopping' });
+  }
   return { item: data };
 }
 

@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
           JSON.stringify({
             title: `🔔 ${event.title}`,
             body: `Za ${offsetLabel} — ${dateLabel}${event.time ? ', ' + event.time : ''}`,
-            icon: '/boar.svg',
+            icon: '/icon-192x192.png',
             url: '/kalendarz',
           })
         );
