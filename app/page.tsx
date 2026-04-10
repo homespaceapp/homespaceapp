@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/db';
 import Link from 'next/link';
+import TasksWidget from './TasksWidget';
+import type { Task } from './zadania/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,12 +41,14 @@ export default async function DashboardPage() {
     { data: billsData },
     { data: pantryExpiring },
     { data: todayEvents },
+    { data: tasksData },
   ] = await Promise.all([
     supabase.from('weekly_plan').select('*, meals(*)').eq('week_number', weekNum).eq('day_of_week', dayOfWeek).single(),
     supabase.from('weekly_plan').select('*, meals(name, protein_rating, prep_time)').eq('week_number', weekNum).order('day_of_week'),
     supabase.from('bills').select('*').eq('active', true).order('due_day'),
     supabase.from('pantry').select('*').not('purchase_date', 'is', null).not('expiry_days', 'is', null).limit(10),
     supabase.from('calendar_events').select('*').eq('date', todayStr).order('time', { ascending: true, nullsFirst: false }),
+    supabase.from('tasks').select('*').order('status').order('due_date', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }),
   ]);
 
   const todayMeal = todayMealData ? {
@@ -68,6 +72,8 @@ export default async function DashboardPage() {
     const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / 86400000);
     return daysLeft <= 3;
   });
+
+  const tasks = (tasksData || []) as Task[];
 
   const events = todayEvents || [];
   const visibleEvents = events.slice(0, MAX_ITEMS);
@@ -177,6 +183,9 @@ export default async function DashboardPage() {
           <p className="text-xs text-red-400 mt-3">→ Spiżarnia</p>
         </Link>
       </div>
+
+      {/* Zadania */}
+      <TasksWidget initialTasks={tasks} />
 
       {/* Tydzień */}
       <div className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm mb-4">
