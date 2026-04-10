@@ -62,3 +62,12 @@ export async function deleteEvent(id: string) {
   await supabase.from('calendar_events').delete().eq('id', id);
   revalidatePath('/kalendarz');
 }
+
+export async function toggleEventDone(id: string, currentDone: boolean) {
+  const newDone = !currentDone;
+  await supabase.from('calendar_events').update({
+    is_done: newDone,
+    done_at: newDone ? new Date().toISOString() : null,
+  }).eq('id', id);
+  revalidatePath('/kalendarz');
+}

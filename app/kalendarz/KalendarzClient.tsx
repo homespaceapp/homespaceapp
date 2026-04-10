@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { addEvent, updateEvent, deleteEvent } from './actions';
+import { addEvent, updateEvent, deleteEvent, toggleEventDone } from './actions';
 
 type CalendarEvent = {
   id: string;
@@ -10,6 +10,7 @@ type CalendarEvent = {
   time: string | null;
   owner: 'adrian' | 'kasia' | 'oboje';
   notes: string | null;
+  is_done: boolean | null;
 };
 
 type CalendarReminder = {
@@ -87,6 +88,7 @@ export default function KalendarzClient({
   const [saving, setSaving] = useState(false);
   const [pushOwner, setPushOwner] = useState<'adrian' | 'kasia' | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [localEvents, setLocalEvents] = useState(events);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -164,6 +166,12 @@ export default function KalendarzClient({
     await deleteEvent(id);
   }
 
+  function handleToggleDone(id: string, currentDone: boolean, e: React.MouseEvent) {
+    e.stopPropagation();
+    setLocalEvents(prev => prev.map(ev => ev.id === id ? { ...ev, is_done: !currentDone } : ev));
+    toggleEventDone(id, currentDone);
+  }
+
   async function subscribePush(owner: 'adrian' | 'kasia') {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       alert('Twoja przeglądarka nie obsługuje push.'); return;
@@ -181,7 +189,7 @@ export default function KalendarzClient({
   const firstDow = getFirstDayOfWeek(year, month);
   const monthLabel = new Date(year, month, 1).toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' });
 
-  function eventsForDate(dateStr: string) { return events.filter(e => e.date === dateStr); }
+  function eventsForDate(dateStr: string) { return localEvents.filter(e => e.date === dateStr); }
 
   function prevMonth() { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); }
   function nextMonth() { if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1); }
@@ -242,10 +250,19 @@ export default function KalendarzClient({
                   {dayEvs.map(ev => (
                     <div key={ev.id}
                       onClick={e => { e.stopPropagation(); openEdit(ev); }}
-                      className={`text-[10px] leading-tight px-1 py-0.5 rounded border truncate cursor-pointer hover:opacity-80 ${OWNER_STYLES[ev.owner]}`}
+                      className={`flex items-center gap-0.5 text-[10px] leading-tight px-1 py-0.5 rounded border cursor-pointer hover:opacity-80 ${OWNER_STYLES[ev.owner]} ${ev.is_done ? 'opacity-50' : ''}`}
                       title={`${ev.title}${ev.time ? ' ' + ev.time : ''} — kliknij aby edytować`}>
-                      {ev.time && <span className="opacity-60">{ev.time} </span>}
-                      {ev.title}
+                      <span
+                        onClick={e => handleToggleDone(ev.id, !!ev.is_done, e)}
+                        className={`shrink-0 w-3 h-3 rounded-full border flex items-center justify-center transition-colors ${ev.is_done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-current bg-white/50'}`}
+                        title={ev.is_done ? 'Oznacz jako nieodrobione' : 'Oznacz jako zrobione'}
+                      >
+                        {ev.is_done && <span className="text-[7px] leading-none">✓</span>}
+                      </span>
+                      <span className={`truncate ${ev.is_done ? 'line-through' : ''}`}>
+                        {ev.time && <span className="opacity-60">{ev.time} </span>}
+                        {ev.title}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -268,11 +285,21 @@ export default function KalendarzClient({
                 </div>
                 <div className="divide-y divide-zinc-100">
                   {dayEvs.map(ev => (
-                    <div key={ev.id} onClick={() => openEdit(ev)}
-                      className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-zinc-50 transition-colors">
-                      <span className={`mt-0.5 text-xs px-1.5 py-0.5 rounded-full border font-medium shrink-0 ${OWNER_STYLES[ev.owner]}`}>{OWNER_LABELS[ev.owner]}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-zinc-900">{ev.title}</p>
+                    <div key={ev.id}
+                      className={`flex items-start gap-3 px-3 py-2.5 hover:bg-zinc-50 transition-colors ${ev.is_done ? 'opacity-50' : ''}`}>
+                      <button
+                        onClick={e => handleToggleDone(ev.id, !!ev.is_done, e)}
+                        className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                          ev.is_done
+                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                            : 'border-zinc-300 hover:border-emerald-400'
+                        }`}
+                        title={ev.is_done ? 'Cofnij' : 'Oznacz jako zrobione'}
+                      >
+                        {ev.is_done && <span className="text-[10px]">✓</span>}
+                      </button>
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openEdit(ev)}>
+                        <p className={`text-sm font-medium ${ev.is_done ? 'line-through text-zinc-400' : 'text-zinc-900'}`}>{ev.title}</p>
                         {(ev.time || ev.notes) && <p className="text-xs text-zinc-400 mt-0.5">{ev.time}{ev.time && ev.notes ? ' · ' : ''}{ev.notes}</p>}
                         {reminders.filter(r => r.event_id === ev.id).length > 0 && (
                           <p className="text-xs text-amber-500 mt-0.5">
@@ -280,7 +307,7 @@ export default function KalendarzClient({
                           </p>
                         )}
                       </div>
-                      <span className="text-xs text-zinc-300 shrink-0 mt-0.5">✏️</span>
+                      <span className="text-xs text-zinc-300 shrink-0 mt-0.5 cursor-pointer" onClick={() => openEdit(ev)}>✏️</span>
                     </div>
                   ))}
                 </div>
