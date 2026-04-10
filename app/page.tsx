@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/db';
 import Link from 'next/link';
 import TasksWidget from './TasksWidget';
+import CalendarWidget from './CalendarWidget';
 import type { Task } from './zadania/actions';
 
 export const dynamic = 'force-dynamic';
@@ -98,29 +99,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
         {/* 1. Dziś w kalendarzu */}
-        <Link href="/kalendarz" className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm hover:border-emerald-400 hover:shadow-md transition-all block">
-          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">📅 Dziś w kalendarzu</p>
-          {!visibleEvents.length ? (
-            <p className="text-sm text-zinc-400">Nic zaplanowanego na dziś</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {visibleEvents.map(ev => (
-                <div key={ev.id} className="flex items-start gap-2.5">
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${ownerStyles[ev.owner] || 'bg-zinc-100 text-zinc-600'}`}>
-                    {ownerLabels[ev.owner] || ev.owner}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-zinc-800">{ev.title}</p>
-                    {ev.time && <p className="text-xs text-zinc-400">{ev.time}</p>}
-                    {ev.notes && <p className="text-xs text-zinc-400">{ev.notes}</p>}
-                  </div>
-                </div>
-              ))}
-              {moreEvents > 0 && <p className="text-xs text-zinc-400">+{moreEvents} więcej…</p>}
-            </div>
-          )}
-          <p className="text-xs text-emerald-500 mt-3">→ Kalendarz</p>
-        </Link>
+        <CalendarWidget initialEvents={visibleEvents} />
 
         {/* 2. Dziś na obiad */}
         <Link href={`/obiady?day=${dayOfWeek}`} className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm hover:border-emerald-400 hover:shadow-md transition-all block">
