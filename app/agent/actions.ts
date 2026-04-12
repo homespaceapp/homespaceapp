@@ -1,6 +1,6 @@
 'use server';
 
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import { supabase } from '@/lib/db';
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -25,7 +25,7 @@ async function getContext() {
     const purchaseDate = new Date(p.purchase_date);
     const expiryDate = new Date(purchaseDate.getTime() + p.expiry_days * 86400000);
     const daysLeft = Math.ceil((expiryDate.getTime() - today.getTime()) / 86400000);
-    return { ...p, daysLeft, expiryDate };
+    return { ...p, daysLeft };
   });
 
   const expired = pantryWithExpiry.filter(p => p.daysLeft < 0);
@@ -34,17 +34,16 @@ async function getContext() {
 
   const pantryText = [
     expiringSoon.length > 0
-      ? `⚠️ KOŃCZĄ SIĘ (${expiringSoon.length > 0 ? 'użyj ASAP' : ''}): ${expiringSoon.map(p => `${p.name} (${p.quantity} ${p.unit}, zostało ${p.daysLeft} dni)`).join('; ')}`
+      ? `⚠️ KOŃCZĄ SIĘ (użyj ASAP): ${expiringSoon.map(p => `${p.name} (${p.quantity} ${p.unit}, zostało ${p.daysLeft} dni)`).join('; ')}`
       : null,
     expired.length > 0
-      ? `❌ PRZETERMINOWANE: ${expired.map(p => `${p.name}`).join(', ')}`
+      ? `❌ PRZETERMINOWANE: ${expired.map(p => p.name).join(', ')}`
       : null,
     ok.length > 0
       ? `✅ OK: ${ok.map(p => `${p.name} (${p.quantity} ${p.unit})`).join(', ')}`
       : null,
   ].filter(Boolean).join('\n') || 'spiżarnia pusta';
 
-  // Przepisy (skrócone — nazwa + składniki)
   const recipesText = (mealsRes.data || [])
     .map(m => `[${m.name}] składniki: ${m.ingredients}`)
     .join('\n');
@@ -64,13 +63,13 @@ ${recipesText}`;
 }
 
 export async function sendMessage(messages: Message[], imageBase64?: string, imageMime?: string): Promise<string> {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return 'Brak klucza GOOGLE_API_KEY. Dodaj go w ustawieniach Vercel → Environment Variables.';
+    return 'Brak klucza GROQ_API_KEY. Dodaj go w ustawieniach Vercel → Environment Variables.';
   }
 
   const context = await getContext();
-  const ai = new GoogleGenAI({ apiKey });
+  const client = new Groq({ apiKey });
 
   const systemPrompt = `Jesteś Agentem Loszki — inteligentnym asystentem domowym Adriana i Kasi.
 Odpowiadasz po polsku, krótko i konkretnie.
@@ -86,36 +85,31 @@ ZASADA: zawsze sprawdzaj najpierw co się kończy w spiżarni i buduj propozycj�
 AKTUALNY KONTEKST:
 ${context}`;
 
-  const history = messages.slice(-10, -1).map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
+  const groqMessages: Groq.Chat.ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemPrompt },
+    ...messages.slice(-10).map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    })),
+  ];
 
-  const chat = ai.chats.create({
-    model: 'gemini-2.0-flash',
-    config: { systemInstruction: systemPrompt },
-    history,
-  });
-
-  const lastMessage = messages[messages.length - 1];
-  let parts: object[];
-
+  // Groq nie obsługuje obrazów w llama — jeśli jest obraz, dodaj info tekstowo
   if (imageBase64 && imageMime) {
-    parts = [
-      { inlineData: { mimeType: imageMime, data: imageBase64 } },
-      { text: lastMessage.content },
-    ];
-  } else {
-    parts = [{ text: lastMessage.content }];
+    const last = groqMessages[groqMessages.length - 1];
+    last.content = `[Użytkownik wysłał zdjęcie paragonu]\n${last.content}`;
   }
 
   try {
-    const response = await chat.sendMessage({ message: parts });
-    return response.text ?? '';
+    const response = await client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: groqMessages,
+      max_tokens: 1024,
+    });
+    return response.choices[0]?.message?.content ?? '';
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
-      return '⚠️ Przekroczono limit zapytań Gemini (free tier). Spróbuj za chwilę lub wróć po północy gdy limit się resetuje.';
+    if (msg.includes('429') || msg.includes('rate_limit')) {
+      return '⚠️ Przekroczono limit zapytań. Spróbuj za chwilę.';
     }
     console.error('Agent error:', msg);
     return `❌ Błąd agenta: ${msg.slice(0, 200)}`;
