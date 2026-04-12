@@ -1,6 +1,6 @@
 'use server';
 
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { supabase } from '@/lib/db';
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -9,69 +9,106 @@ async function getContext() {
   const today = new Date();
   const weekNum = Math.ceil((((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / 86400000) + new Date(today.getFullYear(), 0, 1).getDay() + 1) / 7);
 
-  const { data: weekMeals } = await supabase
-    .from('weekly_plan')
-    .select('day_of_week, meal_name')
-    .eq('week_number', weekNum);
-
-  const { data: pantry } = await supabase
-    .from('pantry')
-    .select('name, quantity, unit');
-
-  const { data: bills } = await supabase
-    .from('bills')
-    .select('name, amount, due_day')
-    .eq('active', true);
+  const [weekMealsRes, pantryRes, billsRes, mealsRes] = await Promise.all([
+    supabase.from('weekly_plan').select('day_of_week, meal_name').eq('week_number', weekNum),
+    supabase.from('pantry').select('name, quantity, unit, purchase_date, expiry_days'),
+    supabase.from('bills').select('name, amount, due_day').eq('active', true),
+    supabase.from('meals').select('name, category, prep_time, protein_rating, ingredients, recipe'),
+  ]);
 
   const days = ['', 'Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'];
-  const planText = weekMeals?.map(m => `${days[m.day_of_week]}: ${m.meal_name}`).join(', ') || 'brak planu';
-  const pantryText = pantry?.map(p => `${p.name} (${p.quantity} ${p.unit})`).join(', ') || 'pusta';
-  const billsText = bills?.map(b => `${b.name} ${b.amount}zł/${b.due_day}.`).join(', ') || 'brak';
+  const planText = weekMealsRes.data?.map(m => `${days[m.day_of_week]}: ${m.meal_name}`).join(', ') || 'brak planu';
+  const billsText = billsRes.data?.map(b => `${b.name} ${b.amount}zł/${b.due_day}.`).join(', ') || 'brak';
 
-  return `PROFIL: Adrian (cel 150-160g białka/dzień), Kasia (cel 75-100g/dzień). Zakupy: soboty. Budżet jedzenie: 220zł/mies.
+  // Spiżarnia z terminami ważności
+  const pantryWithExpiry = (pantryRes.data || []).map(p => {
+    const purchaseDate = new Date(p.purchase_date);
+    const expiryDate = new Date(purchaseDate.getTime() + p.expiry_days * 86400000);
+    const daysLeft = Math.ceil((expiryDate.getTime() - today.getTime()) / 86400000);
+    return { ...p, daysLeft, expiryDate };
+  });
+
+  const expired = pantryWithExpiry.filter(p => p.daysLeft < 0);
+  const expiringSoon = pantryWithExpiry.filter(p => p.daysLeft >= 0 && p.daysLeft <= 3);
+  const ok = pantryWithExpiry.filter(p => p.daysLeft > 3);
+
+  const pantryText = [
+    expiringSoon.length > 0
+      ? `⚠️ KOŃCZĄ SIĘ (${expiringSoon.length > 0 ? 'użyj ASAP' : ''}): ${expiringSoon.map(p => `${p.name} (${p.quantity} ${p.unit}, zostało ${p.daysLeft} dni)`).join('; ')}`
+      : null,
+    expired.length > 0
+      ? `❌ PRZETERMINOWANE: ${expired.map(p => `${p.name}`).join(', ')}`
+      : null,
+    ok.length > 0
+      ? `✅ OK: ${ok.map(p => `${p.name} (${p.quantity} ${p.unit})`).join(', ')}`
+      : null,
+  ].filter(Boolean).join('\n') || 'spiżarnia pusta';
+
+  // Przepisy (skrócone — nazwa + składniki)
+  const recipesText = (mealsRes.data || [])
+    .map(m => `[${m.name}] składniki: ${m.ingredients}`)
+    .join('\n');
+
+  return `PROFIL: Adrian (cel 150-160g białka/dzień, shake ~47g/dzień), Kasia (cel 75-100g/dzień). Zakupy: soboty. Budżet jedzenie: 220zł/mies.
+DATA: ${today.toLocaleDateString('pl-PL')}
+
 PLAN TYGODNIA (tydzień ${weekNum}): ${planText}
-SPIŻARNIA: ${pantryText}
+
+SPIŻARNIA:
+${pantryText}
+
 RACHUNKI: ${billsText}
-DATA: ${today.toLocaleDateString('pl-PL')}`;
+
+BAZA PRZEPISÓW (${mealsRes.data?.length || 0} dań):
+${recipesText}`;
 }
 
 export async function sendMessage(messages: Message[], imageBase64?: string, imageMime?: string): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    return 'Brak klucza ANTHROPIC_API_KEY. Dodaj go w ustawieniach Vercel → Environment Variables.';
+    return 'Brak klucza GOOGLE_API_KEY. Dodaj go w ustawieniach Vercel → Environment Variables.';
   }
 
   const context = await getContext();
-  const client = new Anthropic({ apiKey });
+  const ai = new GoogleGenAI({ apiKey });
 
-  // Przygotuj wiadomości — jeśli mamy obraz, wstaw go do ostatniej wiadomości użytkownika
-  const apiMessages = messages.slice(-10).map((m, i) => {
-    const isLast = i === messages.slice(-10).length - 1;
-    if (isLast && m.role === 'user' && imageBase64 && imageMime) {
-      return {
-        role: 'user' as const,
-        content: [
-          {
-            type: 'image' as const,
-            source: {
-              type: 'base64' as const,
-              media_type: imageMime as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
-              data: imageBase64,
-            },
-          },
-          { type: 'text' as const, text: m.content },
-        ],
-      };
-    }
-    return { role: m.role, content: m.content };
+  const systemPrompt = `Jesteś Agentem Loszki — inteligentnym asystentem domowym Adriana i Kasi.
+Odpowiadasz po polsku, krótko i konkretnie.
+
+TWOJE GŁÓWNE ZADANIA:
+1. Gdy pytają co ugotować — sprawdź spiżarnię, priorytetyzuj produkty z krótkim terminem ważności, dopasuj przepisy z bazy do dostępnych składników
+2. Gdy analizujesz paragon — wypisz produkty jako listę: "- Nazwa (ilość, cena)"
+3. Gdy pytają o zakupy — uwzględnij plan tygodnia i czego brakuje w spiżarni
+4. Gdy pytają o białko — policz na podstawie przepisów i celów Adriana/Kasi
+
+ZASADA: zawsze sprawdzaj najpierw co się kończy w spiżarni i buduj propozycję wokół tych produktów.
+
+AKTUALNY KONTEKST:
+${context}`;
+
+  const history = messages.slice(-10, -1).map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const chat = ai.chats.create({
+    model: 'gemini-2.0-flash',
+    config: { systemInstruction: systemPrompt },
+    history,
   });
 
-  const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: `Jesteś Agentem Loszki — asystentem domowym Adriana i Kasi. Odpowiadasz po polsku, krótko i konkretnie. Gdy analizujesz paragon, wypisz produkty w formacie listy: "- Nazwa produktu (ilość, cena jeśli widoczna)".\n\n${context}`,
-    messages: apiMessages,
-  });
+  const lastMessage = messages[messages.length - 1];
+  let parts: object[];
 
-  return (response.content[0] as { text: string }).text;
+  if (imageBase64 && imageMime) {
+    parts = [
+      { inlineData: { mimeType: imageMime, data: imageBase64 } },
+      { text: lastMessage.content },
+    ];
+  } else {
+    parts = [{ text: lastMessage.content }];
+  }
+
+  const response = await chat.sendMessage({ message: parts });
+  return response.text ?? '';
 }
