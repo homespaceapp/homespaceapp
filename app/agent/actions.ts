@@ -13,7 +13,7 @@ async function getContext() {
     supabase.from('weekly_plan').select('day_of_week, meal_name').eq('week_number', weekNum),
     supabase.from('pantry').select('name, quantity, unit, purchase_date, expiry_days'),
     supabase.from('bills').select('name, amount, due_day').eq('active', true),
-    supabase.from('meals').select('name, category, prep_time, protein_rating, ingredients, recipe'),
+    supabase.from('meals').select('name, category, prep_time, protein_rating, ingredients'),
   ]);
 
   const days = ['', 'Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nd'];
@@ -92,7 +92,7 @@ ${context}`;
   }));
 
   const chat = ai.chats.create({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     config: { systemInstruction: systemPrompt },
     history,
   });
