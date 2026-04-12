@@ -262,6 +262,7 @@ ${context}`;
     });
 
     const choice = response.choices[0];
+    console.log('[Agent] finish_reason:', choice.finish_reason, '| tool_calls:', JSON.stringify(choice.message.tool_calls ?? null));
 
     // Jeśli model chce wywołać narzędzia
     if (choice.finish_reason === 'tool_calls' && choice.message.tool_calls) {
@@ -269,7 +270,9 @@ ${context}`;
 
       for (const toolCall of choice.message.tool_calls) {
         const args = JSON.parse(toolCall.function.arguments) as Record<string, unknown>;
+        console.log('[Agent] wywołuję narzędzie:', toolCall.function.name, JSON.stringify(args));
         const result = await executeTool(toolCall.function.name, args);
+        console.log('[Agent] wynik narzędzia:', result);
         toolResults.push(result);
       }
 
