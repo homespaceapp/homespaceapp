@@ -251,15 +251,20 @@ ${context}`;
     }),
   ];
 
+  // Wykryj intencję — jeśli użytkownik chce coś zapisać, wymuś użycie narzędzia
+  const lastUserMsg = messages[messages.length - 1]?.content?.toLowerCase() ?? '';
+  const isActionIntent = /kalend|wydarzen|wpisz|dodaj do|zaplanuj|jutro|pojutrze|poniedzia|wtorek|środa|czwartek|piątek|sobota|niedziela|stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|października|listopada|grudnia|o \d{1,2}[:h]|kupiłem|kupiłam|kupił|zakup|paragon|zjadłem|zjadłam|zjedliśmy|zużyłem|wyrzuciłem/.test(lastUserMsg);
+
   try {
-    // Pierwsza odpowiedź — model może wywołać narzędzia
+    // Pierwsza odpowiedź — wymuś narzędzie jeśli wykryto intencję akcji
     const response = await client.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: groqMessages,
       tools: TOOLS,
-      tool_choice: 'auto',
+      tool_choice: isActionIntent ? 'required' : 'auto',
       max_tokens: 1024,
     });
+    console.log('[Agent] isActionIntent:', isActionIntent, '| tool_choice:', isActionIntent ? 'required' : 'auto');
 
     const choice = response.choices[0];
     console.log('[Agent] finish_reason:', choice.finish_reason, '| tool_calls:', JSON.stringify(choice.message.tool_calls ?? null));
