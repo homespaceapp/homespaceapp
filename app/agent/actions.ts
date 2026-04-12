@@ -109,6 +109,15 @@ ${context}`;
     parts = [{ text: lastMessage.content }];
   }
 
-  const response = await chat.sendMessage({ message: parts });
-  return response.text ?? '';
+  try {
+    const response = await chat.sendMessage({ message: parts });
+    return response.text ?? '';
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
+      return '⚠️ Przekroczono limit zapytań Gemini (free tier). Spróbuj za chwilę lub wróć po północy gdy limit się resetuje.';
+    }
+    console.error('Agent error:', msg);
+    return `❌ Błąd agenta: ${msg.slice(0, 200)}`;
+  }
 }
