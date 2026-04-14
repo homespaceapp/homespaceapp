@@ -196,7 +196,8 @@ export default function AgentClient() {
       )}
 
       {/* Input */}
-      <div className="px-6 py-4 border-t border-zinc-200 bg-white">
+      <div className="px-6 py-3 border-t border-zinc-200 bg-white flex flex-col gap-2">
+        {/* Linia 1 — przyciski załączników */}
         <div className="flex gap-2">
           {/* Aparat — otwiera kamerę */}
           <input type="file" ref={cameraRef} accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
@@ -209,35 +210,38 @@ export default function AgentClient() {
           <button
             onClick={() => cameraRef.current?.click()}
             disabled={isPending}
-            className="px-3 py-2.5 border border-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 border border-zinc-200 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
             title="Zrób zdjęcie aparatem"
           >
-            📷
+            📷 <span>Aparat</span>
           </button>
           <button
             onClick={() => scanRef.current?.click()}
             disabled={isPending}
-            className="px-3 py-2.5 border border-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 border border-zinc-200 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
             title="Skanuj dokument"
           >
-            🔍
+            🔍 <span>Skan</span>
           </button>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={isPending}
-            className="px-3 py-2.5 border border-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 border border-zinc-200 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
             title="Wybierz zdjęcie z galerii"
           >
-            🖼️
+            🖼️ <span>Galeria</span>
           </button>
           <button
             onClick={() => pdfRef.current?.click()}
             disabled={isPending}
-            className="px-3 py-2.5 border border-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 border border-zinc-200 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
             title="Wgraj PDF lub dokument"
           >
-            📄
+            📄 <span>Plik</span>
           </button>
+        </div>
+        {/* Linia 2 — pole tekstowe + wyślij */}
+        <div className="flex gap-2">
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -258,3 +262,4 @@ export default function AgentClient() {
     </div>
   );
 }
+
