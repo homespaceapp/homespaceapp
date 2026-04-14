@@ -362,3 +362,26 @@ ${context}`;
     return `❌ Błąd agenta: ${msg.slice(0, 200)}`;
   }
 }
+
+// ─── Historia chatu (Supabase sync) ──────────────────────────────────────────
+
+export async function getChatHistory(): Promise<Message[]> {
+  const { data, error } = await supabase
+    .from('agent_chat')
+    .select('role, content')
+    .order('created_at', { ascending: true })
+    .limit(100);
+  if (error || !data?.length) return [];
+  return data as Message[];
+}
+
+export async function saveChatMessages(msgs: Message[]): Promise<void> {
+  if (!msgs.length) return;
+  await supabase.from('agent_chat').insert(
+    msgs.map(m => ({ role: m.role, content: m.content }))
+  );
+}
+
+export async function clearChatHistory(): Promise<void> {
+  await supabase.from('agent_chat').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+}

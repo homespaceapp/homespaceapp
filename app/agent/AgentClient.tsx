@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useTransition } from 'react';
-import { sendMessage } from './actions';
+import { sendMessage, getChatHistory, saveChatMessages, clearChatHistory } from './actions';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -16,13 +16,9 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function AgentClient() {
-  const [messages, setMessages] = useState<Message[]>(() => {
-    if (typeof window === 'undefined') return [{ role: 'assistant', content: 'Cześć! Jestem Agentem Loszki. Znam Wasz plan obiadów, spiżarnię, budżet i rachunki. Możesz też wysłać mi zdjęcie paragonu — przeanalizuję co kupiłeś! 🏠' }];
-    try {
-      const saved = localStorage.getItem('agent-chat-history');
-      return saved ? JSON.parse(saved) : [{ role: 'assistant', content: 'Cześć! Jestem Agentem Loszki. Znam Wasz plan obiadów, spiżarnię, budżet i rachunki. Możesz też wysłać mi zdjęcie paragonu — przeanalizuję co kupiłeś! 🏠' }];
-    } catch { return [{ role: 'assistant', content: 'Cześć! Jestem Agentem Loszki. Znam Wasz plan obiadów, spiżarnię, budżet i rachunki. Możesz też wysłać mi zdjęcie paragonu — przeanalizuję co kupiłeś! 🏠' }]; }
-  });
+  const WELCOME: Message = { role: 'assistant', content: 'Cześć! Jestem Agentem Loszki. Znam Wasz plan obiadów, spiżarnię, budżet i rachunki. Możesz też wysłać mi zdjęcie paragonu — przeanalizuję co kupiłeś! 🏠' };
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState('');
   const [isPending, startTransition] = useTransition();
   const [pendingImage, setPendingImage] = useState<{ base64: string; mime: string; preview: string } | null>(null);
@@ -37,14 +33,17 @@ export default function AgentClient() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Wczytaj historię z Supabase przy pierwszym renderze
   useEffect(() => {
-    try { localStorage.setItem('agent-chat-history', JSON.stringify(messages.slice(-100))); } catch {}
-  }, [messages]);
+    getChatHistory().then(history => {
+      if (history.length > 0) setMessages(history);
+      setHistoryLoaded(true);
+    });
+  }, []);
 
-  function clearHistory() {
-    const fresh = [{ role: 'assistant' as const, content: 'Cześć! Jestem Agentem Loszki. Znam Wasz plan obiadów, spiżarnię, budżet i rachunki. Możesz też wysłać mi zdjęcie paragonu — przeanalizuję co kupiłeś! 🏠' }];
-    setMessages(fresh);
-    localStorage.removeItem('agent-chat-history');
+  async function clearHistory() {
+    await clearChatHistory();
+    setMessages([WELCOME]);
   }
 
   function compressImage(file: File, maxPx = 1280, quality = 0.75): Promise<{ base64: string; mime: string; preview: string }> {
@@ -121,9 +120,13 @@ export default function AgentClient() {
     const attachMime   = file?.mime   ?? img?.mime;
 
     startTransition(async () => {
+      const userMsg: Message = { role: 'user', content: msg || displayMsg };
       const apiMessages = [...messages, { role: 'user' as const, content: msg || displayMsg }];
       const response = await sendMessage(apiMessages.slice(-10), attachBase64, attachMime);
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      const assistantMsg: Message = { role: 'assistant', content: response };
+      setMessages(prev => [...prev, assistantMsg]);
+      // Zapisz obie wiadomości do Supabase
+      await saveChatMessages([userMsg, assistantMsg]);
     });
   }
 
