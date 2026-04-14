@@ -27,24 +27,46 @@ export default function AgentClient() {
   const [pendingImage, setPendingImage] = useState<{ base64: string; mime: string; preview: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function compressImage(file: File, maxPx = 1280, quality = 0.75): Promise<{ base64: string; mime: string; preview: string }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const [meta, base64] = dataUrl.split(',');
+        const mime = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
+        resolve({ base64, mime, preview: dataUrl });
+      };
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+  }
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const [meta, base64] = dataUrl.split(',');
-      const mime = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
-      setPendingImage({ base64, mime, preview: dataUrl });
-      setInput(prev => prev || 'Przeanalizuj ten paragon i wypisz produkty');
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    try {
+      const compressed = await compressImage(file);
+      setPendingImage(compressed);
+      setInput(prev => prev || 'Przeanalizuj ten paragon i wypisz produkty');
+    } catch {
+      alert('Nie udało się wczytać zdjęcia. Spróbuj ponownie.');
+    }
   }
 
   function handleSend(text?: string) {
@@ -138,14 +160,25 @@ export default function AgentClient() {
       {/* Input */}
       <div className="px-6 py-4 border-t border-zinc-200 bg-white">
         <div className="flex gap-2">
-          <input type="file" ref={fileRef} accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
+          {/* Aparat — otwiera kamerę na mobile */}
+          <input type="file" ref={cameraRef} accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
+          {/* Galeria — wybierz zdjęcie z dysku/galerii */}
+          <input type="file" ref={fileRef} accept="image/*" onChange={handleImageChange} className="hidden" />
+          <button
+            onClick={() => cameraRef.current?.click()}
+            disabled={isPending}
+            className="px-3 py-2.5 border border-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
+            title="Zrób zdjęcie aparatem"
+          >
+            📷
+          </button>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={isPending}
             className="px-3 py-2.5 border border-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-800 hover:border-zinc-400 transition-colors disabled:opacity-50"
-            title="Wyślij zdjęcie paragonu"
+            title="Wybierz zdjęcie z galerii"
           >
-            📷
+            🖼️
           </button>
           <textarea
             value={input}

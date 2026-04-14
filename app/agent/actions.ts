@@ -54,6 +54,23 @@ const TOOLS: Groq.Chat.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
+      name: 'add_budget_entry',
+      description: 'Dodaje wpis wydatku do budżetu. Używaj gdy użytkownik wgrywa paragon lub mówi że coś kupił — zawsze razem z add_to_pantry.',
+      parameters: {
+        type: 'object',
+        properties: {
+          description: { type: 'string',  description: 'Opis zakupów np. "Zakupy Lidl", "Biedronka", "Żabka"' },
+          amount:      { type: 'number',  description: 'Łączna kwota w PLN' },
+          category:    { type: 'string',  description: 'Kategoria: jedzenie, chemia, inne' },
+          date:        { type: 'string',  description: 'Data w formacie YYYY-MM-DD, dziś jeśli nie podano' },
+        },
+        required: ['description', 'amount', 'category', 'date'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'add_calendar_event',
       description: 'Dodaje wydarzenie do kalendarza. Używaj gdy użytkownik prosi o wpisanie czegoś do kalendarza.',
       parameters: {
@@ -109,6 +126,19 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
 
     revalidatePath('/spizarnia');
     return results.join('\n');
+  }
+
+  if (name === 'add_budget_entry') {
+    const { error } = await supabase.from('expenses').insert({
+      date: args.date,
+      category: args.category,
+      amount: args.amount,
+      description: args.description,
+      type: 'wydatek',
+    });
+    revalidatePath('/budzet');
+    if (error) return `Błąd budżetu: ${error.message}`;
+    return `Dodano wydatek: ${args.description} — ${args.amount} zł (${args.category})`;
   }
 
   if (name === 'remove_from_pantry') {
@@ -223,6 +253,12 @@ MOŻESZ:
 
 ZASADA: gdy możesz coś zrobić (dodać, usunąć, zapisać) — ZRÓB TO przez narzędzie, nie tylko mów że możesz.
 
+GDY UŻYTKOWNIK WYSYŁA ZDJĘCIE PARAGONU:
+1. Przeanalizuj opis obrazu i zidentyfikuj sklep oraz produkty
+2. WYWOŁAJ add_to_pantry z produktami spożywczymi (mięso, nabiał, warzywa, owoce, pieczywo, suche produkty, napoje) — pomiń chemię i kosmetyki
+3. WYWOŁAJ add_budget_entry z łączną kwotą i opisem sklepu (np. "Zakupy Lidl", "Biedronka") — kategoria: "jedzenie"
+4. Potwierdź krótko co dodałeś do spiżarni i ile wydano
+
 AKTUALNY KONTEKST:
 ${context}`;
 
@@ -253,7 +289,8 @@ ${context}`;
 
   // Wykryj intencję — jeśli użytkownik chce coś zapisać, wymuś użycie narzędzia
   const lastUserMsg = messages[messages.length - 1]?.content?.toLowerCase() ?? '';
-  const isActionIntent = /kalend|wydarzen|wpisz|dodaj do|zaplanuj|jutro|pojutrze|poniedzia|wtorek|środa|czwartek|piątek|sobota|niedziela|stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|października|listopada|grudnia|o \d{1,2}[:h]|kupiłem|kupiłam|kupił|zakup|paragon|zjadłem|zjadłam|zjedliśmy|zużyłem|wyrzuciłem/.test(lastUserMsg);
+  // isActionIntent = true gdy użytkownik chce coś zapisać LUB wysyła zdjęcie (imageBase64 obecny)
+  const isActionIntent = !!imageBase64 || /kalend|wydarzen|wpisz|dodaj do|zaplanuj|jutro|pojutrze|poniedzia|wtorek|środa|czwartek|piątek|sobota|niedziela|stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|października|listopada|grudnia|o \d{1,2}[:h]|kupiłem|kupiłam|kupił|zakup|paragon|przeanalizuj|zjadłem|zjadłam|zjedliśmy|zużyłem|wyrzuciłem/.test(lastUserMsg);
 
   try {
     // Pierwsza odpowiedź — wymuś narzędzie jeśli wykryto intencję akcji
