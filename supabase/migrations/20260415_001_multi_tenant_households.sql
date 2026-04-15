@@ -93,7 +93,7 @@ create table if not exists invite_tokens (
 create index if not exists idx_invite_tokens_token on invite_tokens(token);
 
 -- 7. HELPER FUNCTION — aktualny household usera ----------------
-create or replace function auth.user_households()
+create or replace function public.user_households()
 returns setof uuid
 language sql
 stable
