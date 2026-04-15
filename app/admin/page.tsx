@@ -1,13 +1,9 @@
-import { redirect } from 'next/navigation';
-import { isAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/db';
 import AdminClient from './AdminClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  if (!(await isAdmin())) redirect('/');
-
   const [{ data: households }, { data: members }, { data: invites }, usersRes] = await Promise.all([
     supabaseAdmin.from('households').select('id, name, created_at').order('created_at', { ascending: false }),
     supabaseAdmin.from('household_members').select('household_id, user_id, role, joined_at'),
@@ -21,7 +17,6 @@ export default async function AdminPage() {
   const users = usersRes.data?.users ?? [];
   const userMap = new Map(users.map(u => [u.id, u.email ?? '']));
 
-  // Stats: row counts per household per table
   const tables = ['pantry', 'weekly_plan', 'expenses', 'bills', 'shopping_lists', 'calendar_events', 'notes', 'tasks', 'messages', 'contacts'];
   const statsPerHousehold: Record<string, Record<string, number>> = {};
   for (const h of households ?? []) {
@@ -61,11 +56,16 @@ export default async function AdminPage() {
   });
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">🛡️ Admin Dashboard</h1>
-        <div className="text-sm text-gray-500">
-          👥 {users.length} userów · 🏠 {households?.length ?? 0} domów
+    <>
+      <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
+        <div>
+          <h2 className="text-2xl font-bold">Dashboard</h2>
+          <p className="text-zinc-400 text-sm">Zarządzaj użytkownikami, domami i zaproszeniami</p>
+        </div>
+        <div className="flex gap-6 text-sm">
+          <div><span className="text-zinc-500">Userów:</span> <b className="text-white">{users.length}</b></div>
+          <div><span className="text-zinc-500">Domów:</span> <b className="text-white">{households?.length ?? 0}</b></div>
+          <div><span className="text-zinc-500">Invites:</span> <b className="text-white">{invites?.length ?? 0}</b></div>
         </div>
       </div>
       <AdminClient
@@ -73,6 +73,6 @@ export default async function AdminPage() {
         invites={invitesEnriched}
         users={usersEnriched}
       />
-    </div>
+    </>
   );
 }

@@ -34,7 +34,7 @@ export default function Sidebar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Nie pokazuj sidebara na stronach publicznych (login/invite/auth)
-  if (pathname === '/login' || pathname?.startsWith('/invite') || pathname?.startsWith('/auth')) {
+  if (pathname === '/login' || pathname?.startsWith('/invite') || pathname?.startsWith('/auth') || pathname?.startsWith('/admin')) {
     return null;
   }
 
