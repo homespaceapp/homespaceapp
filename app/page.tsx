@@ -88,6 +88,9 @@ export default async function DashboardPage() {
         <p className="text-zinc-500 text-sm mt-0.5">Tydzień {weekNum}</p>
       </div>
 
+      {/* Zadania — nad sekcją obiadową */}
+      <TasksWidget initialTasks={tasks} />
+
       {/* Kafelki: 2x2 grid — Kalendarz, Obiad, Płatności, Spiżarnia */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
@@ -155,9 +158,6 @@ export default async function DashboardPage() {
           <p className="text-xs text-red-400 mt-3">→ Spiżarnia</p>
         </Link>
       </div>
-
-      {/* Zadania */}
-      <TasksWidget initialTasks={tasks} />
 
       {/* Tydzień */}
       <div className="bg-white rounded-xl p-5 border border-zinc-200 shadow-sm mb-4">
