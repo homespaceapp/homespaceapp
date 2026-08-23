@@ -42,6 +42,21 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Service Worker + workbox: NIGDY nie cachuj -> przegladarka zawsze bierze
+        // najnowszy SW i aktualizuje precache (bez tego PWA zamraza sie na starym buildzie).
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+      {
+        source: '/:file(workbox-.*\\.js|worker-.*\\.js)',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
