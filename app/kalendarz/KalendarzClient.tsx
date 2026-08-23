@@ -156,10 +156,10 @@ export default function KalendarzClient({
   const [saving, setSaving] = useState(false);
   const [pushOwner, setPushOwner] = useState<'adrian' | 'kasia' | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [localEvents, setLocalEvents] = useState(events);
+  const [localEvents, setLocalEvents] = useState(events.filter(e => e.title !== '__cykl__'));
 
-  // Panel cyklu (okres/owulacja)
-  const [cyclePanel, setCyclePanel] = useState(false);
+  // Panel cyklu (okres/owulacja) - domyślnie otwarty, żeby przyciski okresu były od razu widoczne
+  const [cyclePanel, setCyclePanel] = useState(true);
   const [cycleDate, setCycleDate] = useState(todayStr);
   const [cycleLen, setCycleLen] = useState(cycle?.len ?? 28);
   const [cycleSaving, setCycleSaving] = useState(false);
@@ -378,10 +378,10 @@ export default function KalendarzClient({
                 className="ml-auto text-xs px-2 py-1 rounded-lg bg-zinc-100 text-zinc-600 hover:bg-zinc-200 disabled:opacity-40">Zapisz długość</button>
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-500 pt-1">
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block bg-rose-400"></i> okres</span>
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block border border-rose-300"></i> okres (prognoza)</span>
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block bg-green-300"></i> dni płodne</span>
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block bg-purple-500"></i> owulacja</span>
+              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded inline-block bg-red-100 border border-red-300"></i> okres</span>
+              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block border border-red-300"></i> okres (prognoza)</span>
+              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded inline-block bg-sky-100 border border-sky-300"></i> dni płodne</span>
+              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block bg-blue-600"></i> owulacja</span>
             </div>
           </div>
         )}
@@ -402,15 +402,15 @@ export default function KalendarzClient({
           const mk = dateStr ? cyMarks[dateStr] : undefined;
           return (
             <div key={i} onClick={() => day && openAdd(toDateStr(year, month, day))}
-              className={`min-h-[72px] p-1.5 flex flex-col cursor-pointer hover:bg-zinc-50 transition-colors ${mk?.period === 'real' ? 'bg-rose-50' : mk?.fertile || mk?.ovu ? 'bg-green-50/40' : 'bg-white'} ${!day ? 'opacity-0 pointer-events-none' : ''}`}>
+              className={`min-h-[72px] p-1.5 flex flex-col cursor-pointer hover:bg-zinc-50 transition-colors ${mk?.period === 'real' ? 'bg-red-50' : mk?.ovu ? 'bg-sky-200' : mk?.fertile ? 'bg-sky-100' : 'bg-white'} ${!day ? 'opacity-0 pointer-events-none' : ''}`}>
               {day && <>
                 <div className="flex items-center gap-1 mb-1">
-                  <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-emerald-500 text-white' : mk?.period === 'real' ? 'bg-rose-400 text-white' : 'text-zinc-700'}`}>{day}</span>
+                  <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-emerald-500 text-white' : mk?.period === 'real' ? 'bg-red-400 text-white' : 'text-zinc-700'}`}>{day}</span>
                   {mk && (
                     <span className="flex items-center gap-0.5">
-                      {mk.period === 'pred' && <i title="okres (prognoza)" className="w-2 h-2 rounded-full border border-rose-300 inline-block" />}
-                      {mk.fertile && !mk.ovu && <i title="dzień płodny" className="w-2 h-2 rounded-full bg-green-300 inline-block" />}
-                      {mk.ovu && <i title="owulacja" className="w-2 h-2 rounded-full bg-purple-500 inline-block" />}
+                      {mk.period === 'pred' && <i title="okres (prognoza)" className="w-2 h-2 rounded-full border border-red-300 inline-block" />}
+                      {mk.fertile && !mk.ovu && <i title="dzień płodny" className="w-2 h-2 rounded-full bg-sky-400 inline-block" />}
+                      {mk.ovu && <i title="owulacja" className="w-2 h-2 rounded-full bg-blue-600 inline-block" />}
                     </span>
                   )}
                 </div>
