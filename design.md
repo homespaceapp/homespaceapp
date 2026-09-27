@@ -103,4 +103,4 @@ Prototyp tekstowy komponentu:
 - [x] Główny flow E2E
 - [x] Mobile 390 px
 - [x] Desktop 1440 px
-- [ ] Produkcyjny URL + HTTP
+- [x] Produkcyjny URL + HTTP
