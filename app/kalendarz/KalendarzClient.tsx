@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { addEvent, updateEvent, deleteEvent, toggleEventDone, addRecurringSeries, deleteSeries, saveCycle } from './actions';
+import {
+  cycleMarks,
+  cycleStatus,
+  diffDaysStr,
+  withUpdatedEstimates,
+  type CycleData,
+} from '@/lib/cycle-prediction';
 
 type CalendarEvent = {
   id: string;
@@ -67,59 +75,7 @@ function formatOffsetLabel(m: number) {
   return `${Math.round(m / 1440)}d`;
 }
 
-// ── CYKL: typy + liczenie (okres realny/przewidywany, okno płodne, owulacja) ──
 type RecFreq = 'day' | 'week' | 'month' | 'year';
-type CycleData = { len: number; plen: number; starts: string[]; ends: string[] };
-type CellMark = { period?: 'real' | 'pred'; fertile?: boolean; ovu?: boolean };
-
-function addDaysStr(dateStr: string, n: number) {
-  const d = new Date(dateStr + 'T12:00:00'); d.setDate(d.getDate() + n);
-  return toDateStr(d.getFullYear(), d.getMonth(), d.getDate());
-}
-function diffDaysStr(a: string, b: string) {
-  return Math.round((new Date(b + 'T12:00:00').getTime() - new Date(a + 'T12:00:00').getTime()) / 86400000);
-}
-function cycleMarks(cycle: CycleData | null, fromStr: string, toStr: string): Record<string, CellMark> {
-  const marks: Record<string, CellMark> = {};
-  if (!cycle) return marks;
-  const set = (ds: string, patch: CellMark) => {
-    if (ds < fromStr || ds > toStr) return;
-    marks[ds] = { ...marks[ds], ...patch };
-  };
-  const starts = [...(cycle.starts || [])].sort();
-  const ends = [...(cycle.ends || [])].sort();
-  const plen = Math.max(1, cycle.plen);
-  starts.forEach(s => {
-    const e = ends.find(x => x >= s);
-    const last = e || addDaysStr(s, plen - 1);
-    for (let d = s; d <= last; d = addDaysStr(d, 1)) set(d, { period: 'real' });
-  });
-  if (!starts.length) return marks;
-  const anchor = starts[starts.length - 1];
-  const L = Math.max(1, cycle.len);
-  const kMax = Math.max(1, Math.ceil((diffDaysStr(anchor, toStr) + L) / L)) + 1;
-  for (let k = 0; k <= kMax; k++) {
-    const cs = addDaysStr(anchor, k * L);
-    const ov = addDaysStr(cs, L - 14);
-    for (let f = -5; f <= 1; f++) { const fd = addDaysStr(ov, f); if (!marks[fd]?.ovu) set(fd, { fertile: true }); }
-    set(ov, { ovu: true });
-    if (k >= 1) for (let p = 0; p < plen; p++) { const pd = addDaysStr(cs, p); if (marks[pd]?.period !== 'real') set(pd, { period: 'pred' }); }
-  }
-  return marks;
-}
-function cycleStatus(cycle: CycleData | null, todayStr: string) {
-  if (!cycle?.starts?.length) return null;
-  const anchor = [...cycle.starts].sort().pop() as string;
-  const L = Math.max(1, cycle.len);
-  let ov: string | null = null, per: string | null = null;
-  for (let k = 0; k < 24 && (!ov || !per); k++) {
-    const cs = addDaysStr(anchor, k * L);
-    const o = addDaysStr(cs, L - 14);
-    if (!ov && o >= todayStr) ov = o;
-    if (!per && cs > todayStr) per = cs;
-  }
-  return { ov, per };
-}
 function whenLabel(target: string | null, todayStr: string) {
   if (!target) return '';
   const d = diffDaysStr(todayStr, target);
@@ -130,6 +86,15 @@ function whenLabel(target: string | null, todayStr: string) {
 }
 function fmtDayMonth(ds: string) {
   return new Date(ds + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+}
+function fmtDateRange(start: string, end: string) {
+  const startDate = new Date(start + 'T12:00:00');
+  const endDate = new Date(end + 'T12:00:00');
+  if (start === end) return fmtDayMonth(start);
+  if (startDate.getFullYear() === endDate.getFullYear() && startDate.getMonth() === endDate.getMonth()) {
+    return `${startDate.getDate()}–${fmtDayMonth(end)}`;
+  }
+  return `${fmtDayMonth(start)} – ${fmtDayMonth(end)}`;
 }
 
 type ModalForm = { title: string; date: string; time: string; owner: string; notes: string };
@@ -146,6 +111,7 @@ export default function KalendarzClient({
   reminders: CalendarReminder[];
   cycle?: CycleData | null;
 }) {
+  const router = useRouter();
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -269,7 +235,10 @@ export default function KalendarzClient({
     c.len = cycleLen;
     const arr = kind === 'start' ? c.starts : c.ends;
     if (!arr.includes(cycleDate)) arr.push(cycleDate);
-    await saveCycle(JSON.stringify(c));
+    const updated = withUpdatedEstimates(c);
+    setCycleLen(updated.len);
+    await saveCycle(JSON.stringify(updated));
+    router.refresh();
     setCycleSaving(false);
   }
   async function saveCycleLenOnly() {
@@ -347,23 +316,43 @@ export default function KalendarzClient({
 
       {/* CYKL — belka statusu + panel */}
       <div className="mb-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-xs">
-            {cyStatus ? (
-              <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
-                {cyStatus.ov && <span className="text-purple-600 font-semibold">Owulacja: {whenLabel(cyStatus.ov, todayStr)} ({fmtDayMonth(cyStatus.ov)})</span>}
-                {cyStatus.per && <span className="text-rose-500 font-medium">Okres: {whenLabel(cyStatus.per, todayStr)} ({fmtDayMonth(cyStatus.per)})</span>}
-              </span>
-            ) : <span className="text-zinc-400">Cykl: brak danych — zaznacz początek okresu</span>}
+        {cyStatus ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-3 text-rose-950">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-600">Przewidywany okres</p>
+                <p className="text-sm font-bold">{fmtDateRange(cyStatus.nextPeriodStart, cyStatus.nextPeriodEnd)}</p>
+              </div>
+              <span className="text-xs font-semibold text-rose-700">{whenLabel(cyStatus.nextPeriodStart, todayStr)}</span>
+            </div>
+            <p className="mt-1 text-xs text-rose-800">
+              Cykl ok. {cyStatus.cycleLength} dni · okres ok. {cyStatus.periodLength} dni ·{' '}
+              {cyStatus.cycleSource === 'history'
+                ? `na podstawie ${cyStatus.intervalCount + 1} zapisanych początków`
+                : cyStatus.cycleSource === 'saved'
+                  ? 'na podstawie ustawionej długości cyklu'
+                  : 'na podstawie wartości startowej 28 dni'}
+            </p>
+            {cyStatus.variationDays >= 7 && (
+              <p className="mt-1 text-xs font-medium text-amber-700">Historia jest zmienna, więc data może przesunąć się o kilka dni.</p>
+            )}
+            <p className="mt-1 text-[11px] text-rose-700/80">To prognoza orientacyjna — nie służy jako metoda antykoncepcji.</p>
           </div>
-          <button onClick={() => setCyclePanel(v => !v)} className="text-xs px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 font-medium shrink-0">Cykl</button>
+        ) : (
+          <p className="rounded-lg border border-dashed border-rose-200 bg-rose-50/40 px-3 py-2 text-xs text-rose-700">
+            Zaznacz pierwszy dzień okresu, aby uruchomić prognozę kolejnego cyklu.
+          </p>
+        )}
+
+        <div className="mt-2 flex justify-end">
+          <button onClick={() => setCyclePanel(v => !v)} className="text-xs px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 font-medium shrink-0">Ustawienia cyklu</button>
         </div>
         {cyclePanel && (
           <div className="mt-2 p-3 rounded-xl border border-rose-100 bg-rose-50/40 flex flex-col gap-2">
             <p className="text-xs text-zinc-500">Zaznacz <b>realny</b> początek/koniec okresu (możesz cofnąć datę). Owulacja, dni płodne i kolejny okres wyliczą się same.</p>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center">
               <input type="date" value={cycleDate} onChange={e => setCycleDate(e.target.value)}
-                className="border border-zinc-200 rounded-lg px-2 py-1.5 text-sm text-zinc-900" />
+                className="w-full sm:w-auto border border-zinc-200 rounded-lg px-2 py-1.5 text-sm text-zinc-900" />
               <button disabled={cycleSaving} onClick={() => markPeriod('start')}
                 className="flex-1 py-1.5 rounded-lg bg-rose-500 text-white text-xs font-semibold disabled:opacity-40 hover:bg-rose-600">Początek okresu</button>
               <button disabled={cycleSaving} onClick={() => markPeriod('end')}
@@ -377,12 +366,14 @@ export default function KalendarzClient({
               <button disabled={cycleSaving} onClick={saveCycleLenOnly}
                 className="ml-auto text-xs px-2 py-1 rounded-lg bg-zinc-100 text-zinc-600 hover:bg-zinc-200 disabled:opacity-40">Zapisz długość</button>
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-500 pt-1">
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded inline-block bg-red-100 border border-red-300"></i> okres</span>
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block border border-red-300"></i> okres (prognoza)</span>
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded inline-block bg-sky-100 border border-sky-300"></i> dni płodne</span>
-              <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full inline-block bg-blue-600"></i> owulacja</span>
-            </div>
+          </div>
+        )}
+        {!!cycle?.starts?.length && (
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-600" aria-label="Legenda cyklu">
+            <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-rose-500" />Okres zapisany</span>
+            <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full border border-dashed border-rose-500 bg-rose-50" />Przewidywany okres</span>
+            <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-sky-200" />Dni płodne</span>
+            <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-blue-600" />Owulacja</span>
           </div>
         )}
       </div>
@@ -400,15 +391,25 @@ export default function KalendarzClient({
           const dayEvs = dateStr ? eventsForDate(dateStr) : [];
           const isToday = dateStr === todayStr;
           const mk = dateStr ? cyMarks[dateStr] : undefined;
+          const cycleBg = mk?.period === 'real'
+            ? 'bg-rose-100/80'
+            : mk?.period === 'pred'
+              ? 'bg-rose-50/90 ring-1 ring-inset ring-rose-200'
+              : mk?.ovu
+                ? 'bg-sky-100/70'
+                : mk?.fertile
+                  ? 'bg-sky-50/70'
+                  : 'bg-white';
           return (
             <div key={i} onClick={() => day && openAdd(toDateStr(year, month, day))}
-              className={`min-h-[72px] p-1.5 flex flex-col cursor-pointer hover:bg-zinc-50 transition-colors ${mk?.period === 'real' ? 'bg-red-50' : mk?.ovu ? 'bg-sky-200' : mk?.fertile ? 'bg-sky-100' : 'bg-white'} ${!day ? 'opacity-0 pointer-events-none' : ''}`}>
+              className={`min-h-[72px] p-1.5 flex flex-col cursor-pointer transition-colors ${cycleBg} hover:bg-zinc-50 ${!day ? 'opacity-0 pointer-events-none' : ''}`}>
               {day && <>
                 <div className="flex items-center gap-1 mb-1">
-                  <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-emerald-500 text-white' : mk?.period === 'real' ? 'bg-red-400 text-white' : 'text-zinc-700'}`}>{day}</span>
+                  <span className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-emerald-500 text-white' : mk?.period === 'real' ? 'bg-rose-500 text-white' : 'text-zinc-700'}`}>{day}</span>
                   {mk && (
                     <span className="flex items-center gap-0.5">
-                      {mk.period === 'pred' && <i title="okres (prognoza)" className="w-2 h-2 rounded-full border border-red-300 inline-block" />}
+                      {mk.period === 'real' && <i title="Zapisany okres" aria-label="Zapisany okres" className="w-2 h-2 rounded-full bg-rose-500 inline-block" />}
+                      {mk.period === 'pred' && <i title="Przewidywany okres" aria-label="Przewidywany okres" className="w-2 h-2 rounded-full border border-dashed border-rose-500 bg-white inline-block" />}
                       {mk.fertile && !mk.ovu && <i title="dzień płodny" className="w-2 h-2 rounded-full bg-sky-400 inline-block" />}
                       {mk.ovu && <i title="owulacja" className="w-2 h-2 rounded-full bg-blue-600 inline-block" />}
                     </span>
