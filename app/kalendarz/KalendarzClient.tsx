@@ -369,7 +369,7 @@ export default function KalendarzClient({
           </div>
         )}
         {!!cycle?.starts?.length && (
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-600" aria-label="Legenda cyklu">
+          <div className="sr-only" aria-label="Legenda cyklu">
             <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-rose-500" />Okres zapisany</span>
             <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full border border-dashed border-rose-500 bg-rose-50" />Przewidywany okres</span>
             <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-sky-200" />Dni płodne</span>

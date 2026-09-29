@@ -1,9 +1,9 @@
 # DESIGN SYSTEM — Loszki App
 
 > Status: IMPLEMENTED
-> Ostatnia aktualizacja: 2026-09-27
+> Ostatnia aktualizacja: 2026-09-29
 > Właściciel kierunku: Adrian / @coo
-> Zakres bieżącej zmiany: kalendarz — przewidywany okres
+> Zakres bieżącej zmiany: kalendarz — uproszczenie widoku cyklu
 
 ## 1. Cel i odbiorca
 
@@ -29,7 +29,7 @@ Prototyp tekstowy komponentu:
 │ Cykl ok. 28 dni · okres ok. 4 dni          │
 │ Prognoza na podstawie zapisanej historii.  │
 └─────────────────────────────────────────────┘
-● zapisany okres  ◌ prognoza  ● dni płodne  ● owulacja
+Legenda pozostaje ukryta wizualnie i dostępna dla czytników ekranu.
 ```
 
 ## 3. Zasady wizualne
@@ -62,7 +62,8 @@ Prototyp tekstowy komponentu:
 ## 5. Layout i responsywność
 
 - Maksymalna szerokość kalendarza: `max-w-4xl`.
-- Mobile 390 px: karta prognozy i legenda zawijają się; przyciski pozostają dotykalne.
+- Mobile 390 px: karta prognozy pozostaje zwarta; przyciski pozostają dotykalne.
+- Stała legenda nad siatką kalendarza jest ukryta wizualnie, aby ograniczyć szum; jej tekst pozostaje dostępny dla czytników ekranu.
 - Tablet/desktop: ta sama hierarchia, bez osobnego układu.
 - Siatka miesiąca pozostaje siedmiokolumnowa.
 
@@ -72,19 +73,20 @@ Prototyp tekstowy komponentu:
 |---|---|---|---|
 | Karta prognozy | z historią / fallback 28 dni | brak danych / aktywna prognoza | pokazuje zakres, podstawę i zastrzeżenie |
 | Dzień kalendarza | zwykły / okres / prognoza / płodny / owulacja | default/selected/today | okres ma pierwszeństwo tła; selected zachowuje zielony ring |
-| Legenda cyklu | 4 znaczniki | zawsze przy danych cyklu | prognoza ma przerywany wzór |
+| Legenda cyklu | 4 znaczniki | wizualnie ukryta przy danych cyklu | pozostaje w DOM jako `sr-only`; prognoza ma przerywany wzór |
 | Przyciski okresu | początek / koniec | default/disabled/loading | działają na wybranym dniu |
 
 ## 7. Ekrany
 
 | Ekran | Cel | Główne komponenty | Status |
 |---|---|---|---|
-| `/kalendarz` miesiąc | wydarzenia i pełny kontekst cyklu | karta prognozy, legenda, siatka | IMPLEMENTED |
+| `/kalendarz` miesiąc | wydarzenia i pełny kontekst cyklu | karta prognozy, ukryta legenda dostępnościowa, siatka | IMPLEMENTED |
 | `/kalendarz` tydzień | wydarzenia i znaczniki cyklu w 7 dniach | karta prognozy, oznaczone nagłówki dni | IMPLEMENTED |
 
 ## 8. Dostępność
 
 - Prognoza jest nazwana tekstem i oznaczona przerywanym wzorem, nie tylko kolorem.
+- Wizualnie ukryta legenda zachowuje pełne opisy czterech oznaczeń dla czytników ekranu.
 - Znaczniki mają `title`/`aria-label` tam, gdzie przekazują znaczenie.
 - Zachowujemy kontrast tekstu minimum `zinc-600`/`rose-700` na jasnych tłach.
 - Przyciski zachowują widoczne stany disabled i natywne focus.
