@@ -6,12 +6,12 @@ import Image from 'next/image';
 import { useState } from 'react';
 
 const primaryNav = [
-  { href: '/', label: 'Dom', icon: '🏠' },
+  { href: '/kalendarz', label: 'Kalendarz', icon: '📅' },
   { href: '/obiady', label: 'Obiady', icon: '🍽️' },
   { href: '/zakupy', label: 'Zakupy', icon: '🛒' },
   { href: '/spizarnia', label: 'Spiżarnia', icon: '📦' },
   { href: '/budzet', label: 'Budżet', icon: '💰' },
-  { href: '/kalendarz', label: 'Kalendarz', icon: '📅' },
+  { href: '/pulpit', label: 'Pulpit', icon: '🏠' },
   { href: '/agent', label: 'Agent', icon: '🤖' },
 ];
 
@@ -42,7 +42,7 @@ export default function Sidebar() {
     <>
       {/* ── Desktop sidebar ── */}
       <aside className="hidden md:flex w-56 min-h-screen bg-white border-r border-zinc-200 text-zinc-800 flex-col shrink-0">
-        <Link href="/" className="px-5 py-5 border-b border-zinc-100 flex items-center gap-3 hover:bg-zinc-50 transition-colors">
+        <Link href="/kalendarz" className="px-5 py-5 border-b border-zinc-100 flex items-center gap-3 hover:bg-zinc-50 transition-colors">
           <Image src="/icon-192x192.png" alt="Wieloszki" width={36} height={36} className="rounded-lg" />
           <div>
             <h1 className="text-base font-bold tracking-tight text-zinc-900">Wieloszki</h1>
@@ -82,7 +82,7 @@ export default function Sidebar() {
 
       {/* ── Mobile top bar ── */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-zinc-200 h-14 flex items-center px-4 justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/kalendarz" className="flex items-center gap-2.5">
           <Image src="/icon-192x192.png" alt="Wieloszki" width={32} height={32} className="rounded-lg" />
           <span className="text-zinc-900 font-bold text-base tracking-tight">Wieloszki</span>
         </Link>
@@ -108,7 +108,7 @@ export default function Sidebar() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-100">
-              <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5">
+              <Link href="/kalendarz" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5">
                 <Image src="/icon-192x192.png" alt="Wieloszki" width={28} height={28} className="rounded-lg" />
                 <span className="font-bold text-zinc-900">Wieloszki</span>
               </Link>
