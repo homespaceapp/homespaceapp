@@ -2,9 +2,15 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getSupabaseBrowser } from '@/lib/supabase-browser';
+import { createBrowserClient } from '@supabase/ssr';
 
-export default function LoginForm() {
+export default function LoginForm({
+  supabaseUrl,
+  supabaseAnonKey,
+}: {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+}) {
   const searchParams = useSearchParams();
   const invite = searchParams.get('invite');
   const redirect = searchParams.get('redirect');
@@ -19,7 +25,7 @@ export default function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const supabase = getSupabaseBrowser();
+    const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
     const callbackParams = new URLSearchParams();
     if (invite) callbackParams.set('invite', invite);
     if (redirect) callbackParams.set('redirect', redirect);

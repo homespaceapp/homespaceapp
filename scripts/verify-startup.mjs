@@ -48,7 +48,10 @@ try {
   const calendar = await fetch(`${origin}/kalendarz`);
   assert.equal(calendar.status, 200);
   assert.equal(calendar.headers.get('x-nextjs-prerender'), '1');
-  assert.match(await calendar.text(), /Ładowanie kalendarza|Kalendarz/);
+  const calendarHtml = await calendar.text();
+  assert.match(calendarHtml, /Ładowanie kalendarza|Kalendarz/);
+  assert.match(calendarHtml, /qlqnrsxpmoeoukfgovmy\.supabase\.co/);
+  assert.doesNotMatch(calendarHtml, /xgsuyvuyddqhklshohjl\.supabase\.co/);
 
   const dashboard = await fetch(`${origin}/pulpit`);
   assert.equal(dashboard.status, 200);
