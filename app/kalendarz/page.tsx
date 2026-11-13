@@ -1,31 +1,14 @@
-import { getDb } from '@/lib/db';
-import KalendarzClient from './KalendarzClient';
+import KalendarzLoader from './KalendarzLoader';
 
-type CycleData = { len: number; plen: number; starts: string[]; ends: string[] };
+export const dynamic = 'force-static';
 
-export default async function KalendarzPage() {
-  const supabase = await getDb();
-  const [{ data: events }, { data: reminders }] = await Promise.all([
-    supabase.from('calendar_events').select('*').order('date', { ascending: true }),
-    supabase.from('calendar_reminders').select('*'),
-  ]);
+export default function KalendarzPage() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
-  const all = events ?? [];
-  // Ukryty wiersz konfiguracji cyklu (title='__cykl__') - nie pokazujemy go jako wydarzenia.
-  const cycleRow = all.find((e: { title: string }) => e.title === '__cykl__');
-  const realEvents = all.filter((e: { title: string }) => e.title !== '__cykl__');
-  let cycle: CycleData | null = null;
-  if (cycleRow?.notes) {
-    try {
-      const p = JSON.parse(cycleRow.notes);
-      cycle = {
-        len: Number(p.len) || 28,
-        plen: Number(p.plen) || 5,
-        starts: Array.isArray(p.starts) ? p.starts : [],
-        ends: Array.isArray(p.ends) ? p.ends : [],
-      };
-    } catch { cycle = null; }
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Brak publicznej konfiguracji Supabase dla kalendarza.');
   }
 
-  return <KalendarzClient events={realEvents} reminders={reminders ?? []} cycle={cycle} />;
+  return <KalendarzLoader supabaseUrl={supabaseUrl} supabaseAnonKey={supabaseAnonKey} />;
 }
