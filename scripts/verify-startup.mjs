@@ -39,6 +39,14 @@ try {
   const workerSource = await readFile('worker/index.js', 'utf8');
   assert.match(workerSource, /caches\.delete\('pages'\)/);
 
+  const productionEnv = await readFile('.env.production', 'utf8');
+  assert.match(productionEnv, /SUPABASE_URL=https:\/\/qlqnrsxpmoeoukfgovmy\.supabase\.co/);
+  assert.doesNotMatch(productionEnv, /xgsuyvuyddqhklshohjl/);
+
+  const nextConfig = await readFile('next.config.js', 'utf8');
+  assert.match(nextConfig, /NEXT_PUBLIC_HOMESPACE_SUPABASE_URL: canonicalSupabaseUrl/);
+  assert.match(nextConfig, /NEXT_PUBLIC_HOMESPACE_SUPABASE_ANON_KEY: canonicalSupabaseAnonKey/);
+
   await waitForServer();
 
   const root = await fetch(`${origin}/`, { redirect: 'manual' });

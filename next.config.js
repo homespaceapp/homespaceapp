@@ -1,3 +1,15 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { readFileSync } = require('node:fs');
+const { resolve } = require('node:path');
+
+const productionEnv = readFileSync(resolve(__dirname, '.env.production'), 'utf8');
+const canonicalSupabaseUrl = productionEnv.match(/^SUPABASE_URL=(.+)$/m)?.[1].trim();
+const canonicalSupabaseAnonKey = productionEnv.match(/^SUPABASE_ANON_KEY=(.+)$/m)?.[1].trim();
+
+if (!canonicalSupabaseUrl || !canonicalSupabaseAnonKey) {
+  throw new Error('Brak kanonicznej konfiguracji Supabase w .env.production.');
+}
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
@@ -36,6 +48,10 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {},
+  env: {
+    NEXT_PUBLIC_HOMESPACE_SUPABASE_URL: canonicalSupabaseUrl,
+    NEXT_PUBLIC_HOMESPACE_SUPABASE_ANON_KEY: canonicalSupabaseAnonKey,
+  },
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   serverExternalPackages: ['@google/genai', 'pdf-parse'],

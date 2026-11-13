@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServer } from './supabase-server';
+import { getSupabasePublicConfig } from './supabase-config';
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
+const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicConfig();
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // ANON client — DEPRECATED dla danych usera. Zostawiam dla kompatybilności.
