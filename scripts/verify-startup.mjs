@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { readFile } from 'node:fs/promises';
 
 const port = 3314;
 const origin = `http://127.0.0.1:${port}`;
@@ -28,6 +29,16 @@ async function waitForServer() {
 }
 
 try {
+  const vercelConfig = JSON.parse(await readFile('vercel.json', 'utf8'));
+  assert.deepEqual(vercelConfig.regions, ['fra1']);
+
+  const pwaConfig = await readFile('next.config.js', 'utf8');
+  assert.match(pwaConfig, /cacheName: 'pages-v2-calendar-start'/);
+  assert.match(pwaConfig, /networkTimeoutSeconds: 2/);
+
+  const workerSource = await readFile('worker/index.js', 'utf8');
+  assert.match(workerSource, /caches\.delete\('pages'\)/);
+
   await waitForServer();
 
   const root = await fetch(`${origin}/`, { redirect: 'manual' });
@@ -44,7 +55,7 @@ try {
   const manifest = await fetch(`${origin}/manifest.json`).then((response) => response.json());
   assert.equal(manifest.start_url, '/kalendarz');
 
-  console.log('STARTUP_E2E_PASS root=307 calendar=200 pulpit=200 manifest=/kalendarz');
+  console.log('STARTUP_E2E_PASS root=307 calendar=200 pulpit=200 manifest=/kalendarz region=fra1');
 } finally {
   server.kill('SIGTERM');
   await Promise.race([
