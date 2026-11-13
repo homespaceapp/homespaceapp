@@ -47,6 +47,7 @@ try {
 
   const calendar = await fetch(`${origin}/kalendarz`);
   assert.equal(calendar.status, 200);
+  assert.equal(calendar.headers.get('x-nextjs-prerender'), '1');
   assert.match(await calendar.text(), /Ładowanie kalendarza|Kalendarz/);
 
   const dashboard = await fetch(`${origin}/pulpit`);
@@ -55,7 +56,7 @@ try {
   const manifest = await fetch(`${origin}/manifest.json`).then((response) => response.json());
   assert.equal(manifest.start_url, '/kalendarz');
 
-  console.log('STARTUP_E2E_PASS root=307 calendar=200 pulpit=200 manifest=/kalendarz region=fra1');
+  console.log('STARTUP_E2E_PASS root=307 calendar=static pulpit=200 manifest=/kalendarz region=fra1');
 } finally {
   server.kill('SIGTERM');
   await Promise.race([

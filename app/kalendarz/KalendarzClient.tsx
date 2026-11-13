@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { addEvent, updateEvent, deleteEvent, toggleEventDone, addRecurringSeries, deleteSeries, saveCycle } from './actions';
 import {
   cycleMarks,
@@ -105,13 +104,13 @@ const emptyForm = (date = ''): ModalForm => ({ title: '', date, time: '', owner:
 const emptyRecur = (): RecurState => ({ on: false, freq: 'week', interval: 1, until: '' });
 
 export default function KalendarzClient({
-  events, reminders, cycle,
+  events, reminders, cycle, onDataChanged,
 }: {
   events: CalendarEvent[];
   reminders: CalendarReminder[];
   cycle?: CycleData | null;
+  onDataChanged?: () => Promise<void>;
 }) {
-  const router = useRouter();
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -129,6 +128,14 @@ export default function KalendarzClient({
   const [cycleDate, setCycleDate] = useState(todayStr);
   const [cycleLen, setCycleLen] = useState(cycle?.len ?? 28);
   const [cycleSaving, setCycleSaving] = useState(false);
+
+  useEffect(() => {
+    setLocalEvents(events.filter(e => e.title !== '__cykl__'));
+  }, [events]);
+
+  useEffect(() => {
+    setCycleLen(cycle?.len ?? 28);
+  }, [cycle?.len]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -208,6 +215,7 @@ export default function KalendarzClient({
     } else if (modal.eventId) {
       await updateEvent(modal.eventId, { ...modal.form, reminders: remindersToSave });
     }
+    await onDataChanged?.();
     setSaving(false);
     closeModal();
   }
@@ -216,12 +224,14 @@ export default function KalendarzClient({
     e?.stopPropagation();
     if (!confirm(`Usunąć "${title}"?`)) return;
     await deleteEvent(id);
+    await onDataChanged?.();
   }
 
   async function handleDeleteSeries() {
     if (!modal.eventId) return;
     if (!confirm(`Usunąć „${modal.form.title}" oraz wszystkie przyszłe powtórzenia (od ${modal.form.date})?`)) return;
     await deleteSeries(modal.form.title, modal.form.owner, modal.form.date, modal.form.time || null);
+    await onDataChanged?.();
     closeModal();
   }
 
@@ -238,13 +248,14 @@ export default function KalendarzClient({
     const updated = withUpdatedEstimates(c);
     setCycleLen(updated.len);
     await saveCycle(JSON.stringify(updated));
-    router.refresh();
+    await onDataChanged?.();
     setCycleSaving(false);
   }
   async function saveCycleLenOnly() {
     setCycleSaving(true);
     const c = currentCycle(); c.len = cycleLen;
     await saveCycle(JSON.stringify(c));
+    await onDataChanged?.();
     setCycleSaving(false);
   }
 
@@ -577,7 +588,7 @@ export default function KalendarzClient({
                         <input type="date" value={modal.recur.until} onChange={e => setRecur({ until: e.target.value })}
                           className="flex-1 border border-zinc-200 rounded-lg px-2 py-1.5 text-sm text-zinc-900" />
                       </div>
-                      <p className="text-[10px] text-zinc-400">Puste „do dnia" = rok do przodu. Powstaną osobne wpisy (każdy edytowalny).</p>
+                      <p className="text-[10px] text-zinc-400">Puste „do dnia” = rok do przodu. Powstaną osobne wpisy (każdy edytowalny).</p>
                     </div>
                   )}
                 </div>
