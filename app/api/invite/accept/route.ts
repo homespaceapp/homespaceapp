@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (existing) {
-    return NextResponse.redirect(`${origin}/`);
+    return NextResponse.redirect(`${origin}/kalendarz`);
   }
 
   // Dodaj usera do householdu (admin — bo user może nie mieć jeszcze uprawnień)
@@ -55,5 +55,5 @@ export async function GET(request: NextRequest) {
   // Jeśli user miał automatycznie utworzony własny household przy rejestracji,
   // można go usunąć (opcjonalne) — zostawiamy, user może z niego korzystać
 
-  return NextResponse.redirect(`${origin}/?invite=accepted`);
+  return NextResponse.redirect(`${origin}/kalendarz?invite=accepted`);
 }

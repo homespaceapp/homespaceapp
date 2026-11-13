@@ -1,5 +1,11 @@
 // Custom Service Worker — obsługa push notifications
 
+self.addEventListener('activate', (event) => {
+  // Poprzednia wersja PWA cache'owała Pulpit pod "/". Po zmianie ekranu
+  // startowego usuwamy wyłącznie ten stary cache nawigacji.
+  event.waitUntil(caches.delete('pages'));
+});
+
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
@@ -14,7 +20,7 @@ self.addEventListener('push', (event) => {
     body: data.body || '',
     icon: data.icon || '/icon-192x192.png',
     badge: '/icon-96x96.png',
-    data: { url: data.url || '/' },
+    data: { url: data.url || '/kalendarz' },
     tag: data.tag || 'wieloszki',
     renotify: true,
     vibrate: [200, 100, 200],
@@ -27,7 +33,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || '/kalendarz';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windowClients) => {

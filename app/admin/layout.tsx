@@ -40,7 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-sm text-zinc-400 hover:text-white">← do aplikacji</Link>
+            <Link href="/kalendarz" className="text-sm text-zinc-400 hover:text-white">← do aplikacji</Link>
             <form action="/auth/signout" method="post">
               <button className="text-sm bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded">Wyloguj</button>
             </form>

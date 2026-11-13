@@ -10,8 +10,8 @@ const withPWA = require('next-pwa')({
       urlPattern: ({ request }) => request.mode === 'navigate',
       handler: 'NetworkFirst',
       options: {
-        cacheName: 'pages',
-        networkTimeoutSeconds: 10,
+        cacheName: 'pages-v2-calendar-start',
+        networkTimeoutSeconds: 2,
       },
     },
     {
@@ -39,6 +39,15 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   serverExternalPackages: ['@google/genai', 'pdf-parse'],
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/kalendarz',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
