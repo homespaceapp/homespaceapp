@@ -58,9 +58,9 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: '/',
-        destination: '/kalendarz',
-        permanent: false,
+        source: '/:path*',
+        destination: 'https://loszkiapp.vercel.app/:path*',
+        permanent: true,
       },
     ];
   },
